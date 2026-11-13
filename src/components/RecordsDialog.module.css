@@ -1,0 +1,102 @@
+.dialog {
+  width: min(440px, calc(100% - 2 * var(--gutter)));
+  max-height: calc(100dvh - 2 * var(--gutter));
+  padding: 0;
+  color: var(--text);
+  background: var(--pine-900);
+}
+
+.dialog::backdrop {
+  background: rgb(3 16 13 / 0.6);
+  backdrop-filter: blur(3px);
+}
+
+.dialog[open] {
+  animation: appear 280ms var(--ease) both;
+}
+
+.content {
+  display: grid;
+  gap: 8px;
+  padding: 14px 14px 18px 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0 6px 0 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mode {
+  font-weight: 500;
+}
+
+.detail {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.bar {
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+}
+
+.score {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.total {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.note {
+  padding-right: 6px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}

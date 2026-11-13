@@ -1,0 +1,111 @@
+.panel {
+  position: absolute;
+  left: 50%;
+  bottom: var(--gutter);
+  translate: -50% 0;
+  width: min(460px, calc(100% - 2 * var(--gutter)));
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  animation: rise 420ms var(--ease) both;
+}
+
+.panel[data-perfect='true'] {
+  border-color: var(--accent);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.medal {
+  display: flex;
+  animation: medal 900ms var(--ease) both;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.score {
+  margin-left: auto;
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.total {
+  color: var(--text-dim);
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.facts li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--radius-s);
+  background: var(--surface-raised);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.correct > :last-child {
+  color: var(--emerald-bright);
+}
+
+.wrong > :last-child {
+  color: var(--vermilion-bright);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgb(168 242 106 / 0.14);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.actions > * {
+  flex: 1 1 auto;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: -50% 16px;
+  }
+}
+
+@keyframes medal {
+  from {
+    opacity: 0;
+    scale: 0.4;
+    rotate: -40deg;
+  }
+}

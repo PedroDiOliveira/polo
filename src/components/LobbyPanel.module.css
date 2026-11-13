@@ -1,0 +1,148 @@
+.panel {
+  position: absolute;
+  left: 50%;
+  bottom: var(--gutter);
+  translate: -50% 0;
+  width: min(460px, calc(100% - 2 * var(--gutter)));
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  animation: rise 420ms var(--ease) both;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+}
+
+.segment {
+  min-height: 40px;
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-weight: 500;
+  transition:
+    background 200ms var(--ease),
+    color 200ms var(--ease);
+}
+
+.segment[aria-checked='true'] {
+  background: var(--mist-50);
+  color: var(--pine-950);
+}
+
+.continents {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.continent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px 0 14px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  font-size: 14px;
+  text-align: left;
+  transition:
+    background 160ms var(--ease),
+    border-color 160ms var(--ease);
+}
+
+.continent:hover {
+  background: var(--surface-hover);
+}
+
+.continent[aria-checked='true'] {
+  border-color: var(--accent);
+  background: rgb(168 242 106 / 0.12);
+}
+
+.continentCount {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.note {
+  padding: 0 6px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 6px;
+}
+
+.best {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.total {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.perfect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.empty {
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 31px;
+}
+
+.play {
+  flex: none;
+  min-width: 148px;
+}
+
+.playCount {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgb(6 32 26 / 0.14);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.hint {
+  padding: 0 6px 2px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.credit {
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.credit::before {
+  content: '· ';
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: -50% 16px;
+  }
+}

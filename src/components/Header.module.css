@@ -1,0 +1,51 @@
+.header {
+  position: absolute;
+  inset: var(--gutter) var(--gutter) auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.header > * {
+  pointer-events: auto;
+}
+
+.brand {
+  display: flex;
+  filter: drop-shadow(0 2px 12px rgb(0 0 0 / 0.4));
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 999px;
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 160ms var(--ease);
+}
+
+.action:hover {
+  background: var(--surface-hover);
+}
+
+.count {
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+}

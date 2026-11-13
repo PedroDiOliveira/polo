@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" role="img" aria-label="Polo">
+  <g transform="rotate(23.5 24 24)" stroke="#F3F7F2" stroke-linecap="round">
+    <circle cx="24" cy="24" r="12" stroke-width="4"/>
+    <path d="M12 24a12 4.4 0 0 0 24 0" stroke-width="3"/>
+    <path d="M24 42v2.5" stroke-width="4"/>
+    <circle cx="24" cy="4.6" r="2.8" fill="#A8F26A" stroke="none"/>
+  </g>
+</svg>

@@ -1,0 +1,80 @@
+.root {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 50%, rgb(31 175 107 / 0.16), transparent 58%),
+    var(--bg);
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+  font-family: inherit;
+}
+
+.tooltipAnchor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.tooltip {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--mist-50);
+  color: var(--pine-950);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.3);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  padding: var(--gutter);
+  background: var(--bg);
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.spinner {
+  animation: turn 2.4s linear infinite;
+}
+
+.controls {
+  position: absolute;
+  right: var(--gutter);
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  padding: 4px;
+  border-radius: 999px;
+}
+
+.divider {
+  justify-self: center;
+  width: 20px;
+  height: 1px;
+  background: var(--line);
+}
+
+@media (max-width: 640px) {
+  .controls {
+    top: 40%;
+  }
+}
+
+@keyframes turn {
+  to {
+    rotate: 360deg;
+  }
+}

@@ -1,0 +1,129 @@
+.hud {
+  position: absolute;
+  top: calc(var(--gutter) + 62px);
+  left: 50%;
+  translate: -50% 0;
+  width: min(520px, calc(100% - 2 * var(--gutter)));
+  overflow: hidden;
+  animation: drop 420ms var(--ease) both;
+  transition: border-color 200ms var(--ease);
+}
+
+@media (min-width: 1040px) {
+  .hud {
+    top: var(--gutter);
+  }
+}
+
+.hud[data-feedback='correct'] {
+  border-color: var(--emerald-bright);
+}
+
+.hud[data-feedback='wrong'] {
+  border-color: var(--vermilion-bright);
+}
+
+.progress {
+  height: 3px;
+  background: var(--line);
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  transition: scale 320ms var(--ease);
+}
+
+.prompt {
+  padding: 16px 20px 12px;
+  text-align: center;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.hud[data-feedback='correct'] .status {
+  color: var(--emerald-bright);
+}
+
+.hud[data-feedback='wrong'] .status {
+  color: var(--vermilion-bright);
+}
+
+.capital {
+  margin-top: 2px;
+  font-size: clamp(26px, 6vw, 38px);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  padding: 8px 8px 8px 20px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.stats > div {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stats dt {
+  display: flex;
+}
+
+.stats dd {
+  margin: 0;
+}
+
+.dim {
+  color: var(--text-dim);
+}
+
+.correct {
+  color: var(--emerald-bright);
+}
+
+.wrong {
+  color: var(--vermilion-bright);
+}
+
+.quit {
+  margin-left: auto;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    background 160ms var(--ease),
+    color 160ms var(--ease);
+}
+
+.quit:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+@keyframes drop {
+  from {
+    opacity: 0;
+    translate: -50% -12px;
+  }
+}

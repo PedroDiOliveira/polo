@@ -1,0 +1,21 @@
+.earned .planet {
+  fill: var(--aurora);
+  stroke: var(--aurora);
+}
+
+.earned .orbit {
+  stroke: var(--mist-50);
+}
+
+.earned .pole {
+  fill: var(--amber);
+}
+
+.locked .planet,
+.locked .orbit {
+  stroke: var(--line-strong);
+}
+
+.locked .pole {
+  fill: var(--line-strong);
+}
