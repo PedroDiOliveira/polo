@@ -3,24 +3,26 @@ import type { ModeId } from './modes'
 export interface Feedback {
   kind: 'correct' | 'wrong'
   target: string
+  picked: string
 }
 
 export interface Round {
   mode: ModeId
+  review: boolean
   queue: readonly string[]
   index: number
+  total: number
   correct: readonly string[]
   wrong: readonly string[]
   startedAt: number
 }
 
-export type Session =
-  | { phase: 'lobby' }
-  | ({ phase: 'playing'; feedback: Feedback | null } & Round)
-  | ({ phase: 'finished'; elapsedMs: number; completed: boolean } & Round)
+export type PlayingSession = { phase: 'playing'; feedback: Feedback | null } & Round
+export type FinishedSession = { phase: 'finished'; elapsedMs: number; completed: boolean } & Round
+export type Session = { phase: 'lobby' } | PlayingSession | FinishedSession
 
 export type SessionAction =
-  | { type: 'start'; mode: ModeId; queue: readonly string[]; now: number }
+  | { type: 'start'; mode: ModeId; queue: readonly string[]; now: number; review?: boolean }
   | { type: 'answer'; picked: string }
   | { type: 'advance'; now: number }
   | { type: 'quit'; now: number }
@@ -28,9 +30,8 @@ export type SessionAction =
 
 export const INITIAL_SESSION: Session = { phase: 'lobby' }
 
-export function currentTarget(session: Session): string | null {
-  return session.phase === 'playing' ? (session.queue[session.index] ?? null) : null
-}
+// In a review round a missed capital comes back after this many other questions.
+const REVIEW_GAP = 3
 
 export function isResolved(session: Session, code: string): boolean {
   return session.phase !== 'lobby' && (session.correct.includes(code) || session.wrong.includes(code))
@@ -43,8 +44,10 @@ export function sessionReducer(session: Session, action: SessionAction): Session
       return {
         phase: 'playing',
         mode: action.mode,
+        review: action.review ?? false,
         queue: action.queue,
         index: 0,
+        total: action.queue.length,
         correct: [],
         wrong: [],
         startedAt: action.now,
@@ -53,15 +56,17 @@ export function sessionReducer(session: Session, action: SessionAction): Session
 
     case 'answer': {
       if (session.phase !== 'playing' || session.feedback) return session
-      const target = session.queue[session.index]
       if (isResolved(session, action.picked)) return session
-      const hit = action.picked === target
-      return {
-        ...session,
-        correct: hit ? [...session.correct, target] : session.correct,
-        wrong: hit ? session.wrong : [...session.wrong, target],
-        feedback: { kind: hit ? 'correct' : 'wrong', target },
+      const target = session.queue[session.index]
+      const feedback: Feedback = {
+        kind: action.picked === target ? 'correct' : 'wrong',
+        target,
+        picked: action.picked,
       }
+      if (feedback.kind === 'correct') return { ...session, correct: [...session.correct, target], feedback }
+      if (!session.review) return { ...session, wrong: [...session.wrong, target], feedback }
+      const at = Math.min(session.index + 1 + REVIEW_GAP, session.queue.length)
+      return { ...session, queue: [...session.queue.slice(0, at), target, ...session.queue.slice(at)], feedback }
     }
 
     case 'advance': {
@@ -79,13 +84,15 @@ export function sessionReducer(session: Session, action: SessionAction): Session
   }
 }
 
-function finish(session: Extract<Session, { phase: 'playing' }>, now: number, completed: boolean): Session {
-  const { mode, queue, index, correct, wrong, startedAt } = session
+function finish(session: PlayingSession, now: number, completed: boolean): FinishedSession {
+  const { mode, review, queue, index, total, correct, wrong, startedAt } = session
   return {
     phase: 'finished',
     mode,
+    review,
     queue,
     index,
+    total,
     correct,
     wrong,
     startedAt,

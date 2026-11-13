@@ -3,6 +3,7 @@ import { Icon } from '../components/Icon'
 import type { Bounds, Locale } from '../data/types'
 import { useI18n } from '../i18n/I18nContext'
 import ui from '../styles/primitives.module.css'
+import type { MapFill } from './layers'
 import { MapController, type ProjectionName, type SignalKind } from './MapController'
 import styles from './MapView.module.css'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -22,8 +23,8 @@ export interface MapFocus {
 interface MapViewProps {
   locale: Locale
   showCapitals: boolean
-  correct: readonly string[]
-  wrong: readonly string[]
+  fills: readonly MapFill[]
+  hatched: readonly string[]
   signal: MapSignal | null
   focus: MapFocus
   tooltipFor: (code: string) => string | null
@@ -32,7 +33,7 @@ interface MapViewProps {
 
 type Status = 'loading' | 'ready' | 'error'
 
-export function MapView({ locale, showCapitals, correct, wrong, signal, focus, tooltipFor, onPick }: MapViewProps) {
+export function MapView({ locale, showCapitals, fills, hatched, signal, focus, tooltipFor, onPick }: MapViewProps) {
   const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -73,8 +74,8 @@ export function MapView({ locale, showCapitals, correct, wrong, signal, focus, t
   }, [showCapitals, locale])
 
   useEffect(() => {
-    controllerRef.current?.setMarks(correct, wrong)
-  }, [correct, wrong])
+    controllerRef.current?.setFills(fills, hatched)
+  }, [fills, hatched])
 
   useEffect(() => {
     const controller = controllerRef.current
@@ -117,7 +118,7 @@ export function MapView({ locale, showCapitals, correct, wrong, signal, focus, t
       <div className={`${ui.panel} ${styles.controls}`}>
         <button
           type="button"
-          className={ui.iconButton}
+          className={`${ui.iconButton} ${styles.zoom}`}
           onClick={() => controllerRef.current?.zoomBy(1)}
           aria-label={t.zoomIn}
         >
@@ -125,13 +126,13 @@ export function MapView({ locale, showCapitals, correct, wrong, signal, focus, t
         </button>
         <button
           type="button"
-          className={ui.iconButton}
+          className={`${ui.iconButton} ${styles.zoom}`}
           onClick={() => controllerRef.current?.zoomBy(-1)}
           aria-label={t.zoomOut}
         >
           <Icon name="minus" />
         </button>
-        <span className={styles.divider} aria-hidden="true" />
+        <span className={`${styles.divider} ${styles.zoom}`} aria-hidden="true" />
         <button
           type="button"
           className={ui.iconButton}

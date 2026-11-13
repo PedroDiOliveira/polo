@@ -37,11 +37,14 @@ export function ownersFilter(owners: readonly string[]): FilterSpecification {
   return owners.length > 0 ? ['in', ['get', 'owner'], ['literal', [...owners]]] : NO_MATCH
 }
 
-export function markColor(correct: readonly string[], wrong: readonly string[]): ExpressionSpecification | string {
-  if (correct.length === 0 && wrong.length === 0) return MAP_COLORS.land
-  const branches: (string | string[])[] = []
-  if (correct.length > 0) branches.push([...correct], MAP_COLORS.correct)
-  if (wrong.length > 0) branches.push([...wrong], MAP_COLORS.wrong)
+export interface MapFill {
+  color: string
+  codes: readonly string[]
+}
+
+export function fillColor(fills: readonly MapFill[]): ExpressionSpecification | string {
+  const branches = fills.filter((fill) => fill.codes.length > 0).flatMap((fill) => [[...fill.codes], fill.color])
+  if (branches.length === 0) return MAP_COLORS.land
   return ['match', ['get', 'owner'], ...branches, MAP_COLORS.land] as unknown as ExpressionSpecification
 }
 

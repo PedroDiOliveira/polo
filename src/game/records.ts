@@ -1,4 +1,4 @@
-import { isModeId, MODE_TOTALS, type ModeId } from './modes'
+import { isModeId, MODE_IDS, MODE_TOTALS, type ModeId } from './modes'
 
 export interface ModeRecord {
   best: number
@@ -33,6 +33,19 @@ export function applyResult(records: Records, result: RoundResult): RecordOutcom
   if (perfectMs !== undefined) next.perfectMs = perfectMs
 
   return { records: { ...records, [result.mode]: next }, isNewBest, isPerfect, isFastestPerfect }
+}
+
+export function mergeRecords(a: Records, b: Records): Records {
+  const merged: Records = {}
+  for (const mode of MODE_IDS) {
+    const records = [a[mode], b[mode]].filter((record) => record !== undefined)
+    if (records.length === 0) continue
+    const record: ModeRecord = { best: Math.max(...records.map((r) => r.best)) }
+    const times = records.flatMap((r) => (r.perfectMs === undefined ? [] : [r.perfectMs]))
+    if (times.length > 0) record.perfectMs = Math.min(...times)
+    merged[mode] = record
+  }
+  return merged
 }
 
 export function serializeRecords(records: Records): string {

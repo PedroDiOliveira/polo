@@ -44,6 +44,23 @@ export interface Messages {
   showFlat: string
   switchLanguage: string
   dataCredit: string
+  modeFull: string
+  modeQuick: string
+  modeQuickName: string
+  modeQuickNote: string
+  lengthLabel: string
+  wrongDetail: (country: string, capital: string) => string
+  reviewTag: string
+  reviewOffer: (count: number) => string
+  reviewStart: string
+  reviewDone: string
+  reviewEnded: string
+  statReviewed: string
+  missedTitle: string
+  showOnMap: (country: string) => string
+  masteryToggle: string
+  masteryLevels: readonly [string, string, string, string]
+  masteryCount: (count: number, total: number) => string
 }
 
 const en: Messages = {
@@ -88,7 +105,7 @@ const en: Messages = {
   playAgain: 'Play again',
   backToLobby: 'Back to lobby',
   records: 'Records',
-  recordsNote: 'Polo stores a single cookie, used only to remember your personal bests.',
+  recordsNote: 'Your records and mastery map are saved only in this browser. Clearing its site data erases them.',
   close: 'Close',
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
@@ -96,6 +113,26 @@ const en: Messages = {
   showFlat: 'Switch to flat map',
   switchLanguage: 'Mudar para português',
   dataCredit: 'Map data: Natural Earth',
+  modeFull: 'Full',
+  modeQuick: 'Quick',
+  modeQuickName: 'Quick global',
+  modeQuickNote: '20 capitals drawn from the whole world.',
+  lengthLabel: 'Length',
+  wrongDetail: (country, capital) => `You clicked ${country} (capital: ${capital})`,
+  reviewTag: 'Review',
+  reviewOffer: (count) =>
+    count === 1
+      ? 'Want to review the one you missed? It comes back until you get it right.'
+      : `Want to review the ${count} you missed? Each one comes back until you get it right.`,
+  reviewStart: 'Review misses',
+  reviewDone: 'Review complete',
+  reviewEnded: 'Review ended',
+  statReviewed: 'Reviewed',
+  missedTitle: 'Missed',
+  showOnMap: (country) => `Show ${country} on the map`,
+  masteryToggle: 'Mastery map',
+  masteryLevels: ['Learning', 'Familiar', 'Good', 'Mastered'],
+  masteryCount: (count, total) => `${count} of ${total} mastered`,
 }
 
 const pt: Messages = {
@@ -140,7 +177,7 @@ const pt: Messages = {
   playAgain: 'Jogar de novo',
   backToLobby: 'Voltar ao lobby',
   records: 'Recordes',
-  recordsNote: 'O Polo guarda um único cookie, usado apenas para lembrar seus recordes pessoais.',
+  recordsNote: 'Seus recordes e o mapa de domínio ficam salvos só neste navegador. Limpar os dados do site apaga tudo.',
   close: 'Fechar',
   zoomIn: 'Aproximar',
   zoomOut: 'Afastar',
@@ -148,10 +185,32 @@ const pt: Messages = {
   showFlat: 'Mudar para o mapa plano',
   switchLanguage: 'Switch to English',
   dataCredit: 'Dados do mapa: Natural Earth',
+  modeFull: 'Completa',
+  modeQuick: 'Rápida',
+  modeQuickName: 'Global rápida',
+  modeQuickNote: '20 capitais sorteadas do mundo todo.',
+  lengthLabel: 'Duração',
+  wrongDetail: (country, capital) => `Você clicou em ${country} (capital: ${capital})`,
+  reviewTag: 'Revisão',
+  reviewOffer: (count) =>
+    count === 1
+      ? 'Quer revisar o erro agora? A capital volta até você acertar.'
+      : `Quer revisar os ${count} erros agora? Cada capital volta até você acertar.`,
+  reviewStart: 'Revisar erros',
+  reviewDone: 'Revisão concluída',
+  reviewEnded: 'Revisão encerrada',
+  statReviewed: 'Revisadas',
+  missedTitle: 'Erros',
+  showOnMap: (country) => `Mostrar ${country} no mapa`,
+  masteryToggle: 'Mapa de domínio',
+  masteryLevels: ['Aprendendo', 'Familiar', 'Bom', 'Dominado'],
+  masteryCount: (count, total) => `${count} de ${total} dominados`,
 }
 
 export const MESSAGES: Record<Locale, Messages> = { en, pt }
 
 export function modeName(messages: Messages, mode: ModeId): string {
-  return mode === 'global' ? messages.modeGlobal : messages.continents[mode]
+  if (mode === 'global') return messages.modeGlobal
+  if (mode === 'quick') return messages.modeQuickName
+  return messages.continents[mode]
 }

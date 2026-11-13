@@ -69,7 +69,12 @@
 
 @media (max-width: 640px) {
   .controls {
-    top: 40%;
+    top: 31%;
+  }
+
+  /* Touch screens zoom by pinching; only the projection switch stays. */
+  .zoom {
+    display: none;
   }
 }
 

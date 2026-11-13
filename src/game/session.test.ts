@@ -16,10 +16,10 @@ describe('sessionReducer', () => {
 
   it('records a hit and a miss against the target country, not the picked one', () => {
     const hit = sessionReducer(start(['BRA', 'ARG']), { type: 'answer', picked: 'BRA' })
-    expect(hit).toMatchObject({ correct: ['BRA'], wrong: [], feedback: { kind: 'correct', target: 'BRA' } })
+    expect(hit).toMatchObject({ correct: ['BRA'], wrong: [], feedback: { kind: 'correct', target: 'BRA', picked: 'BRA' } })
 
     const miss = sessionReducer(start(['BRA', 'ARG']), { type: 'answer', picked: 'ARG' })
-    expect(miss).toMatchObject({ correct: [], wrong: ['BRA'], feedback: { kind: 'wrong', target: 'BRA' } })
+    expect(miss).toMatchObject({ correct: [], wrong: ['BRA'], feedback: { kind: 'wrong', target: 'BRA', picked: 'ARG' } })
   })
 
   it('locks input while feedback is on screen', () => {
@@ -43,5 +43,26 @@ describe('sessionReducer', () => {
     let session = sessionReducer(start(['BRA', 'ARG']), { type: 'answer', picked: 'BRA' })
     session = sessionReducer(session, { type: 'quit', now: 4_000 })
     expect(session).toMatchObject({ phase: 'finished', completed: false, correct: ['BRA'], elapsedMs: 3_000 })
+  })
+
+  describe('review round', () => {
+    const review = (queue: string[]): Session =>
+      sessionReducer(INITIAL_SESSION, { type: 'start', mode: 'south-america', queue, now: 0, review: true })
+    const play = (session: Session, picked: string): Session =>
+      sessionReducer(sessionReducer(session, { type: 'answer', picked }), { type: 'advance', now: 1 })
+
+    it('brings a missed capital back later instead of marking it wrong', () => {
+      const session = play(review(['BRA', 'ARG']), 'ARG')
+      expect(session).toMatchObject({ phase: 'playing', queue: ['BRA', 'ARG', 'BRA'], wrong: [], total: 2 })
+    })
+
+    it('only finishes once every capital was answered correctly', () => {
+      let session = review(['BRA', 'ARG'])
+      session = play(session, 'ARG')
+      session = play(session, 'ARG')
+      expect(session.phase).toBe('playing')
+      session = play(session, 'BRA')
+      expect(session).toMatchObject({ phase: 'finished', completed: true, review: true, correct: ['ARG', 'BRA'] })
+    })
   })
 })

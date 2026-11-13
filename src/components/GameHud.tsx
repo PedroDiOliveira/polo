@@ -1,5 +1,5 @@
 import { getCountry } from '../data/world'
-import type { Session } from '../game/session'
+import type { PlayingSession } from '../game/session'
 import { useElapsed } from '../hooks/useElapsed'
 import { useI18n } from '../i18n/I18nContext'
 import { modeName } from '../i18n/messages'
@@ -9,18 +9,22 @@ import { Icon } from './Icon'
 import styles from './GameHud.module.css'
 
 interface GameHudProps {
-  session: Extract<Session, { phase: 'playing' }>
+  session: PlayingSession
   onQuit: () => void
 }
+
+const unique = (code: string, at: number, codes: readonly string[]) => codes.indexOf(code) === at
 
 export function GameHud({ session, onQuit }: GameHudProps) {
   const { locale, t } = useI18n()
   const elapsed = useElapsed(session.startedAt)
-  const { queue, index, correct, wrong, feedback, mode } = session
+  const { queue, index, total, correct, wrong, feedback, mode, review } = session
   const target = getCountry(queue[index])
   if (!target) return null
 
   const answered = correct.length + wrong.length
+  const picked = feedback?.kind === 'wrong' ? getCountry(feedback.picked) : undefined
+  const position = Math.min(session.queue.slice(0, index + 1).filter(unique).length, total)
   const status = feedback
     ? feedback.kind === 'correct'
       ? t.correctAnswer(target.name[locale])
@@ -32,12 +36,12 @@ export function GameHud({ session, onQuit }: GameHudProps) {
       <div
         className={styles.progress}
         role="progressbar"
-        aria-label={t.progress(answered, queue.length)}
+        aria-label={t.progress(answered, total)}
         aria-valuemin={0}
-        aria-valuemax={queue.length}
+        aria-valuemax={total}
         aria-valuenow={answered}
       >
-        <span style={{ scale: `${answered / queue.length} 1` }} />
+        <span style={{ scale: `${answered / total} 1` }} />
       </div>
 
       <div className={styles.prompt} aria-live="assertive" aria-atomic="true">
@@ -46,14 +50,15 @@ export function GameHud({ session, onQuit }: GameHudProps) {
           {status}
         </p>
         <h2 className={styles.capital}>{target.capital[locale]}</h2>
+        {picked && <p className={styles.detail}>{t.wrongDetail(picked.name[locale], picked.capital[locale])}</p>}
       </div>
 
       <dl className={styles.stats}>
         <div>
           <dt className="visually-hidden">{modeName(t, mode)}</dt>
           <dd className={ui.mono}>
-            {Math.min(index + 1, queue.length)}
-            <span className={styles.dim}>/{queue.length}</span>
+            {position}
+            <span className={styles.dim}>/{total}</span>
           </dd>
         </div>
         <div className={styles.correct}>
@@ -63,13 +68,20 @@ export function GameHud({ session, onQuit }: GameHudProps) {
           </dt>
           <dd className={ui.mono}>{correct.length}</dd>
         </div>
-        <div className={styles.wrong}>
-          <dt>
-            <Icon name="close" size={14} />
-            <span className="visually-hidden">{t.statWrong}</span>
-          </dt>
-          <dd className={ui.mono}>{wrong.length}</dd>
-        </div>
+        {review ? (
+          <div className={styles.tag}>
+            <dt className="visually-hidden">{t.modeLabel}</dt>
+            <dd>{t.reviewTag}</dd>
+          </div>
+        ) : (
+          <div className={styles.wrong}>
+            <dt>
+              <Icon name="close" size={14} />
+              <span className="visually-hidden">{t.statWrong}</span>
+            </dt>
+            <dd className={ui.mono}>{wrong.length}</dd>
+          </div>
+        )}
         <div>
           <dt className="visually-hidden">{t.statTime}</dt>
           <dd className={ui.mono}>{formatDuration(elapsed)}</dd>

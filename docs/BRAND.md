@@ -64,6 +64,8 @@ The accent is named after the aurora, the light seen near the poles. It is used 
 - The states step down in lightness: land → correct → missed → ocean, each about 2:1 against the next.
 - In the interface, every status has an icon (check or cross) and a text label.
 
+**Mastery map.** The lobby's mastery view uses a four-step ramp: sand `#E8C9A0` for countries still being learned, then three greens rising to the same emerald used for a correct answer. Sand rather than red, because a country you have not learned yet is not a mistake.
+
 Measured contrast ratios: body text on panels 13.6:1, secondary text 7.6:1, button label on aurora 12.7:1.
 
 ## The planet medal

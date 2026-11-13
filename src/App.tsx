@@ -6,10 +6,14 @@ import { RecordsDialog } from './components/RecordsDialog'
 import { ResultPanel } from './components/ResultPanel'
 import { describePlace, getCountry } from './data/world'
 import { CONTINENT_BOUNDS } from './game/camera'
-import { GLOBAL_MODE, type ModeId } from './game/modes'
+import type { Country } from './data/types'
+import { groupByLevel } from './game/mastery'
+import { GLOBAL_MODE, isWorldwide, type ModeId } from './game/modes'
 import { FEEDBACK_MS, useGame } from './hooks/useGame'
 import { useI18n } from './i18n/I18nContext'
+import type { MapFill } from './map/layers'
 import type { MapFocus, MapSignal } from './map/MapView'
+import { MAP_COLORS } from './map/theme'
 
 // The map engine is by far the heaviest dependency: load it in its own chunk so the shell paints first.
 const MapView = lazy(() => import('./map/MapView').then((module) => ({ default: module.MapView })))
@@ -18,10 +22,11 @@ const NONE: readonly string[] = []
 
 export function App() {
   const { locale } = useI18n()
-  const { session, outcome, records, start, answer, quit, leave } = useGame()
+  const { session, outcome, records, mastery, start, review, answer, quit, leave } = useGame()
   const [mode, setMode] = useState<ModeId>(GLOBAL_MODE)
   const [focus, setFocus] = useState<MapFocus>({ id: 0, bounds: null })
   const [recordsOpen, setRecordsOpen] = useState(false)
+  const [showMastery, setShowMastery] = useState(false)
 
   const playing = session.phase === 'playing'
   const feedback = playing ? session.feedback : null
@@ -34,12 +39,23 @@ export function App() {
     [allWrong, feedback],
   )
 
+  const fills = useMemo<MapFill[]>(() => {
+    if (session.phase === 'lobby' && showMastery) {
+      return groupByLevel(mastery).map((codes, level) => ({ color: MAP_COLORS.mastery[level], codes }))
+    }
+    return [
+      { color: MAP_COLORS.correct, codes: correct },
+      { color: MAP_COLORS.wrong, codes: wrong },
+    ]
+  }, [session.phase, showMastery, mastery, correct, wrong])
+
   const signal = useMemo<MapSignal | null>(() => {
-    if (!feedback) return null
+    const target = feedback && getCountry(feedback.target)
+    if (!feedback || !target) return null
     return {
-      code: feedback.target,
+      code: target.code,
       kind: feedback.kind,
-      label: getCountry(feedback.target)?.name[locale] ?? '',
+      label: `${target.capital[locale]} · ${target.name[locale]}`,
       durationMs: FEEDBACK_MS[feedback.kind],
     }
   }, [feedback, locale])
@@ -61,13 +77,24 @@ export function App() {
     if (playing && owner) answer(owner.code)
   }
 
-  const play = (selected: ModeId) => {
-    start(selected)
+  const frame = (selected: ModeId) =>
     setFocus((current) => ({
       id: current.id + 1,
-      bounds: selected === GLOBAL_MODE ? null : CONTINENT_BOUNDS[selected],
+      bounds: isWorldwide(selected) ? null : CONTINENT_BOUNDS[selected],
     }))
+
+  const play = (selected: ModeId) => {
+    start(selected)
+    frame(selected)
   }
+
+  const startReview = () => {
+    if (session.phase !== 'finished') return
+    review()
+    frame(session.mode)
+  }
+
+  const locate = (country: Country) => setFocus((current) => ({ id: current.id + 1, bounds: country.bounds }))
 
   const perfectCount = Object.values(records).filter((record) => record.perfectMs !== undefined).length
 
@@ -77,8 +104,8 @@ export function App() {
         <MapView
           locale={locale}
           showCapitals={!playing}
-          correct={correct}
-          wrong={wrong}
+          fills={fills}
+          hatched={wrong}
           signal={signal}
           focus={focus}
           tooltipFor={tooltipFor}
@@ -87,11 +114,26 @@ export function App() {
       </Suspense>
       <Header perfectCount={perfectCount} onOpenRecords={() => setRecordsOpen(true)} />
       {session.phase === 'lobby' && (
-        <LobbyPanel mode={mode} records={records} onModeChange={setMode} onPlay={() => play(mode)} />
+        <LobbyPanel
+          mode={mode}
+          records={records}
+          mastery={mastery}
+          showMastery={showMastery}
+          onModeChange={setMode}
+          onToggleMastery={() => setShowMastery((current) => !current)}
+          onPlay={() => play(mode)}
+        />
       )}
       {session.phase === 'playing' && <GameHud session={session} onQuit={quit} />}
       {session.phase === 'finished' && (
-        <ResultPanel session={session} outcome={outcome} onPlayAgain={() => play(session.mode)} onLeave={leave} />
+        <ResultPanel
+          session={session}
+          outcome={outcome}
+          onPlayAgain={() => play(session.mode)}
+          onReview={startReview}
+          onLeave={leave}
+          onLocate={locate}
+        />
       )}
       <RecordsDialog open={recordsOpen} records={records} onClose={() => setRecordsOpen(false)} />
     </main>

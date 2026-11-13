@@ -40,11 +40,12 @@ Polo asks the spatial question instead. It shows a capital and you have to click
 
 ![The lobby: a globe with capital labels appearing by zoom level, and the mode selector](docs/screenshots/lobby.png)
 
-**Two game modes.**
+**Game modes.**
 
 | Mode | Pool | Length |
 | --- | --- | --- |
-| Global | All 197 countries | Long |
+| Global, full | All 197 countries | Long |
+| Global, quick | 20 capitals drawn from the whole world | A few minutes |
 | Regional | One continent: Africa (54), Asia (49), Europe (45), North America (23), Oceania (14) or South America (12) | Short |
 
 **A round.**
@@ -52,9 +53,13 @@ Polo asks the spatial question instead. It shows a capital and you have to click
 1. A capital is drawn at random and shown at the top of the screen.
 2. You click the country it belongs to. Hovering a territory shows only the country name.
 3. **Correct:** the country turns green and stays green.
-4. **Wrong:** the right country pulses in amber with its name, the camera moves to it if it is off screen, and then it settles to hatched red for the rest of the game.
+4. **Wrong:** the right country pulses in amber, a pin marks the capital itself, and the panel tells you which country you clicked and what its capital is. The camera moves to the answer if it is off screen. The country then settles to hatched red for the rest of the game.
 
 Every capital in the pool is asked once. A miss does not end the game.
+
+**Optional review round.** The result screen lists what you missed, and each entry flies the map to that country. If there were misses, the game offers a review: only those capitals, on a clean map, each one coming back a few questions later until you get it right. It is an offer, never a gate, and it does not touch your score.
+
+**Mastery map.** A switch in the lobby colours every country by how well you know it, across all the games you have played. Four levels, from "learning" to "mastered"; a correct first answer moves a country up one level and a miss moves it down.
 
 **Personal bests.** The best score is stored per mode and per continent. A perfect run earns a planet medal and records the time it took; a faster perfect run replaces it.
 
@@ -98,13 +103,14 @@ src/
 ├── game/                Pure game logic, no React and no DOM
 │   ├── session.ts       Reducer: lobby → playing → finished
 │   ├── records.ts       Personal-best rules and cookie codec
+│   ├── mastery.ts       Per-country mastery levels
 │   └── modes.ts         Mode ids and country pools
 ├── map/                 Everything that touches MapLibre
 │   ├── MapController.ts Imperative facade: marks, hover, signals, camera
 │   ├── CapitalLabels.ts Zoom- and viewport-aware capital labels
 │   ├── layers.ts        Style, layers and paint expressions
 │   └── MapView.tsx      The only React component that knows the map exists
-├── hooks/               useGame, useRecords, useElapsed
+├── hooks/               useGame, useRecords, useMastery, useElapsed
 ├── components/          Presentational UI
 ├── i18n/                Typed message catalogues (en, pt-BR)
 └── styles/              Design tokens and shared primitives
@@ -133,7 +139,7 @@ Only the survivors exist in the DOM, usually between 5 and 40 elements. Labels a
 
 **The geometry is prepared at build time.** `scripts/build-data.mjs` takes Natural Earth's 1:10m countries (13 MB), keeps two properties per feature, simplifies the shapes and rounds coordinates to about 100 m. The result is 1.3 MB, or about 450 kB compressed. The output is committed, so a deploy needs no network access to third parties.
 
-**Answering a question costs one GPU update.** Country colours come from a single `match` expression on the fill layer. A correct answer rebuilds that expression and MapLibre repaints; no geometry is re-uploaded and React does not render the map.
+**Answering a question costs one GPU update.** Country colours come from a single `match` expression on the fill layer. A correct answer rebuilds that expression and MapLibre repaints; no geometry is re-uploaded and React does not render the map. The mastery map reuses the same mechanism with a different set of colours.
 
 **The map engine loads in its own chunk.** MapLibre is about 300 kB compressed, most of the JavaScript. It is loaded with `React.lazy`, so the shell (about 90 kB) paints first. Parsing and tiling the GeoJSON happens in MapLibre's web worker, off the main thread.
 
@@ -143,11 +149,26 @@ Only the survivors exist in the DOM, usually between 5 and 40 elements. Labels a
 
 **No backend.** Nothing in the product needs one. The data is static, the game is single-player and the only state worth keeping is a handful of numbers. Leaving the server out means no cold starts, no cost, no data to protect and no way for the game to be "down" short of the CDN itself.
 
-**One cookie, one purpose.** Personal bests are stored in a single first-party cookie, `polo_pb`, and nothing else is stored anywhere. Even the language choice is re-detected on each visit instead of being saved. The cookie is `SameSite=Lax`, `Secure` over HTTPS, lasts a year, and holds a compact JSON map of about 100 bytes. On read it is validated field by field: unknown modes, impossible scores and a perfect time without a perfect score are all discarded, so a hand-edited cookie cannot break the interface.
+**Progress stays in the browser, and is built to survive.** Two things are stored, both first-party and both only on the player's device:
+
+- **Personal bests** live in one cookie, `polo_pb` (`SameSite=Lax`, `Secure` over HTTPS, about 100 bytes), and are mirrored in `localStorage`. On load the two copies are merged, keeping the best score and the fastest perfect time, and both are written back. That renews the cookie's one-year expiry on every visit and lets either store restore the other if one is cleared or expires.
+- **Mastery levels**, one small number per country, live in `localStorage`.
+
+Nothing else is stored; even the language choice is re-detected on each visit. After a finished game the app also asks the browser for persistent storage, so the data is not evicted under disk pressure. Everything read from storage is validated field by field: unknown modes or countries, impossible scores and a perfect time without a perfect score are discarded, so hand-edited data cannot break the interface.
 
 **Bests are counted in correct answers, perfection is timed.** The personal best is the highest number of capitals answered correctly, kept separately for Global and for each continent. Time only matters once you have a perfect run, where it becomes the tiebreaker to beat. This keeps the early goal simple (get more right) and gives experts something to chase.
 
-**A miss teaches.** On a wrong answer the right country is shown for about two seconds, with its name, before it turns red. The red then stays for the rest of the game as a map of what to study. After a game ends the capital labels come back, so you can inspect what you missed.
+**The game is designed around how people learn.** I reviewed the research on learning before the second iteration, and three findings shaped the design:
+
+- **Retrieval beats re-reading.** Being asked to produce an answer strengthens memory more than seeing it again, and the effect holds for positions on a map (Rohrer et al., 2010). This is why the core mechanic is a question, and why the lobby is for exploring rather than a required study step.
+- **Feedback has to contain the answer.** "Wrong" on its own corrects very little. Polo shows the right country, pins the capital, and names the country you clicked with its own capital, which untangles the confusion in both directions.
+- **What you missed should come back.** Karpicke and Roediger (2007) found that repeatedly recalling an item, rather than dropping it, more than doubled retention. That is the review round: missed capitals return, spaced a few questions apart, until each is answered correctly.
+
+I deliberately stopped short of a full spaced-repetition scheduler with due dates. It is the stronger technique on paper, but it would turn a casual game into a study tool. The mastery map gives the same signal, where you are weak, without telling anyone what to do today.
+
+**Quick games.** 197 questions in one sitting is a long, massed session. The quick global game (20 capitals) makes it easy to play often, which is both more casual and closer to how practice is best distributed.
+
+**Scores only count first attempts.** Personal bests and mastery are updated by regular games only. The review round changes neither, so it stays a safe place to be wrong.
 
 **Assumptions made where the brief was open.**
 
@@ -208,7 +229,8 @@ Any other static host works too: run `npm run build` and serve `dist/`.
 
 - **Keyboard play.** A searchable country list as an alternative to clicking, so the game is fully playable without a pointer.
 - **More question types.** Flags, country shapes, or the reverse (given a country, name the capital).
-- **Spaced repetition.** A practice mode that brings back the countries you miss most often.
+- **Practice from the mastery map.** A game built from the countries currently at the lowest levels.
+- **A "no hints" option.** Hiding country names on hover, for players who want the harder recall.
 - **Shareable results.** A generated image of the final map, with no server involved.
 - **Offline play.** A service worker; the app already has no runtime dependencies on the network.
 - **End-to-end tests.** Playwright runs of a full game, alongside the existing unit tests.

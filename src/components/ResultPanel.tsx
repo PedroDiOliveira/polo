@@ -1,5 +1,7 @@
+import { getCountry } from '../data/world'
+import type { Country } from '../data/types'
 import type { RecordOutcome } from '../game/records'
-import type { Session } from '../game/session'
+import type { FinishedSession } from '../game/session'
 import { useI18n } from '../i18n/I18nContext'
 import { modeName } from '../i18n/messages'
 import { formatDuration } from '../lib/time'
@@ -9,18 +11,29 @@ import { PlanetMedal } from './PlanetMedal'
 import styles from './ResultPanel.module.css'
 
 interface ResultPanelProps {
-  session: Extract<Session, { phase: 'finished' }>
+  session: FinishedSession
   outcome: RecordOutcome | null
   onPlayAgain: () => void
+  onReview: () => void
   onLeave: () => void
+  onLocate: (country: Country) => void
 }
 
-export function ResultPanel({ session, outcome, onPlayAgain, onLeave }: ResultPanelProps) {
-  const { t } = useI18n()
-  const total = session.queue.length
+export function ResultPanel({ session, outcome, onPlayAgain, onReview, onLeave, onLocate }: ResultPanelProps) {
+  const { locale, t } = useI18n()
+  const { review, total, completed } = session
   const correct = session.correct.length
   const perfect = outcome?.isPerfect ?? false
-  const title = perfect ? t.resultPerfect : session.completed ? t.resultCompleted : t.resultEnded
+  const missed = session.wrong.flatMap((code) => getCountry(code) ?? [])
+  const title = review
+    ? completed
+      ? t.reviewDone
+      : t.reviewEnded
+    : perfect
+      ? t.resultPerfect
+      : completed
+        ? t.resultCompleted
+        : t.resultEnded
 
   return (
     <section className={`${ui.panel} ${styles.panel}`} data-perfect={perfect} aria-live="polite">
@@ -31,7 +44,7 @@ export function ResultPanel({ session, outcome, onPlayAgain, onLeave }: ResultPa
           </div>
         )}
         <div>
-          <p className={ui.eyebrow}>{modeName(t, session.mode)}</p>
+          <p className={ui.eyebrow}>{review ? t.reviewTag : modeName(t, session.mode)}</p>
           <h2 className={styles.title}>{title}</h2>
         </div>
         <p className={`${ui.mono} ${styles.score}`} aria-label={t.resultScore(correct, total)}>
@@ -46,13 +59,15 @@ export function ResultPanel({ session, outcome, onPlayAgain, onLeave }: ResultPa
           <span className={ui.mono}>{formatDuration(session.elapsedMs)}</span>
         </li>
         <li className={styles.correct}>
-          <span className={ui.eyebrow}>{t.statCorrect}</span>
+          <span className={ui.eyebrow}>{review ? t.statReviewed : t.statCorrect}</span>
           <span className={ui.mono}>{correct}</span>
         </li>
-        <li className={styles.wrong}>
-          <span className={ui.eyebrow}>{t.statWrong}</span>
-          <span className={ui.mono}>{session.wrong.length}</span>
-        </li>
+        {!review && (
+          <li className={styles.wrong}>
+            <span className={ui.eyebrow}>{t.statWrong}</span>
+            <span className={ui.mono}>{missed.length}</span>
+          </li>
+        )}
       </ul>
 
       {(outcome?.isNewBest || outcome?.isFastestPerfect) && (
@@ -60,6 +75,33 @@ export function ResultPanel({ session, outcome, onPlayAgain, onLeave }: ResultPa
           <Icon name="check" size={14} />
           {outcome.isFastestPerfect ? t.fastestPerfect : t.newBest}
         </p>
+      )}
+
+      {missed.length > 0 && (
+        <div className={styles.missed}>
+          <p className={ui.eyebrow}>{t.missedTitle}</p>
+          <ul className={styles.missedList}>
+            {missed.map((country) => (
+              <li key={country.code}>
+                <button
+                  type="button"
+                  className={styles.missedItem}
+                  onClick={() => onLocate(country)}
+                  aria-label={t.showOnMap(country.name[locale])}
+                >
+                  <span className={styles.missedCapital}>{country.capital[locale]}</span>
+                  <span className={styles.missedCountry}>{country.name[locale]}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className={styles.offer}>
+            <p>{t.reviewOffer(missed.length)}</p>
+            <button type="button" className={styles.offerButton} onClick={onReview}>
+              {t.reviewStart}
+            </button>
+          </div>
+        </div>
       )}
 
       <div className={styles.actions}>

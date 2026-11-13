@@ -17,10 +17,11 @@ import {
   hatchLayer,
   HATCH_IMAGE,
   LAYER,
-  markColor,
+  fillColor,
   NO_MATCH,
   ownerFilter,
   ownersFilter,
+  type MapFill,
 } from './layers'
 import { MAP_COLORS, MAP_VIEW } from './theme'
 import { isOnVisibleHemisphere } from './visibility'
@@ -110,12 +111,12 @@ export class MapController {
     this.labels.configure(visible, locale)
   }
 
-  setMarks(correct: readonly string[], wrong: readonly string[]): void {
+  setFills(fills: readonly MapFill[], hatched: readonly string[]): void {
     this.whenReady(() => {
-      const color = markColor(correct, wrong)
+      const color = fillColor(fills)
       this.map.setPaintProperty(LAYER.land, 'fill-color', color)
       this.map.setPaintProperty(LAYER.dots, 'circle-color', color)
-      this.map.setFilter(LAYER.hatch, ownersFilter(wrong))
+      this.map.setFilter(LAYER.hatch, ownersFilter(hatched))
     })
   }
 
@@ -130,10 +131,8 @@ export class MapController {
       this.map.setPaintProperty(LAYER.signal, 'fill-color', color)
       this.map.setPaintProperty(LAYER.dotsSignal, 'circle-color', color)
 
-      if (kind === 'wrong') {
-        this.reveal(country)
-        this.signalMarker = this.createSignalMarker(country, label)
-      }
+      if (kind === 'wrong') this.reveal(country)
+      this.signalMarker = this.createSignalMarker(country, kind, label)
       this.animateSignal(kind, durationMs)
     })
   }
@@ -180,17 +179,23 @@ export class MapController {
   private fit(bounds: Bounds, maxZoom: number): void {
     const { clientWidth, clientHeight } = this.map.getContainer()
     const side = Math.round(clientWidth * 0.12)
-    this.map.fitBounds(
+    const top = Math.round(clientHeight * 0.26)
+    const bottom = Math.round(clientHeight * 0.14)
+    const [west, south, east, north] = bounds
+    const camera = this.map.cameraForBounds(
       [
-        [bounds[0], bounds[1]],
-        [bounds[2], bounds[3]],
+        [west, south],
+        [east, north],
       ],
-      {
-        padding: { top: Math.round(clientHeight * 0.26), bottom: Math.round(clientHeight * 0.14), left: side, right: side },
-        maxZoom,
-        duration: this.duration(900),
-      },
+      { padding: { top, bottom, left: side, right: side }, maxZoom },
     )
+    // Centre on the middle of the bounds ourselves: on the globe, the fitted centre drifts towards the pole.
+    this.map.easeTo({
+      center: [(west + east) / 2, (south + north) / 2],
+      zoom: camera?.zoom ?? this.map.getZoom(),
+      offset: [0, (top - bottom) / 2],
+      duration: this.duration(900),
+    })
   }
 
   private reveal(country: Country): void {
@@ -209,16 +214,17 @@ export class MapController {
     this.fit(country.bounds, country.tiny ? 5 : 4.5)
   }
 
-  private createSignalMarker(country: Country, label: string): Marker {
+  // Pins the capital itself, so the feedback ties city, country and position together.
+  private createSignalMarker(country: Country, kind: SignalKind, label: string): Marker {
     const element = document.createElement('div')
-    element.className = 'signal-marker'
-    const ring = document.createElement('span')
-    ring.className = 'signal-marker__ring'
-    const text = document.createElement('span')
-    text.className = 'signal-marker__label'
-    text.textContent = label
-    element.append(ring, text)
-    return new Marker({ element, anchor: 'center' }).setLngLat(country.anchor).addTo(this.map)
+    element.className = `signal-marker signal-marker--${kind}`
+    for (const part of ['ring', 'dot', 'label']) {
+      const child = document.createElement('span')
+      child.className = `signal-marker__${part}`
+      if (part === 'label') child.textContent = label
+      element.append(child)
+    }
+    return new Marker({ element, anchor: 'center' }).setLngLat(country.capitalAt).addTo(this.map)
   }
 
   private animateSignal(kind: SignalKind, durationMs: number): void {

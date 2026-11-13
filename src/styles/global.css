@@ -96,16 +96,34 @@ p {
   animation: signal-ring 1s var(--ease) infinite;
 }
 
+.signal-marker--correct .signal-marker__ring {
+  display: none;
+}
+
+.signal-marker__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--pine-950);
+  box-shadow: 0 0 0 2px var(--mist-50);
+}
+
 .signal-marker__label {
+  position: absolute;
+  bottom: 14px;
   padding: 5px 11px;
   border-radius: 999px;
   background: var(--pine-950);
-  box-shadow: 0 0 0 2px var(--amber);
+  box-shadow: 0 0 0 2px var(--mist-50);
   color: var(--mist-50);
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   animation: label-in 240ms var(--ease) both;
+}
+
+.signal-marker--wrong .signal-marker__label {
+  box-shadow: 0 0 0 2px var(--amber);
 }
 
 @keyframes label-in {

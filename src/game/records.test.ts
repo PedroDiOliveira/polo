@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MODE_TOTALS } from './modes'
-import { applyResult, parseRecords, serializeRecords, type Records } from './records'
+import { applyResult, mergeRecords, parseRecords, serializeRecords, type Records } from './records'
 
 const total = MODE_TOTALS.oceania
 
@@ -50,5 +50,17 @@ describe('records cookie codec', () => {
 
   it('drops a perfect time that does not match a perfect score', () => {
     expect(parseRecords('{"oceania":[3,1000]}')).toEqual({ oceania: { best: 3 } })
+  })
+})
+
+describe('mergeRecords', () => {
+  it('keeps the best score and the fastest perfect time from either store', () => {
+    const cookie: Records = { europe: { best: 30 }, oceania: { best: total, perfectMs: 90_000 } }
+    const local: Records = { europe: { best: 12 }, oceania: { best: total, perfectMs: 45_000 }, asia: { best: 4 } }
+    expect(mergeRecords(cookie, local)).toEqual({
+      europe: { best: 30 },
+      oceania: { best: total, perfectMs: 45_000 },
+      asia: { best: 4 },
+    })
   })
 })

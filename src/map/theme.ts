@@ -10,6 +10,7 @@ export const MAP_COLORS = {
   wrongHatch: '#FFD9D0',
   signal: '#FFC53D',
   flash: '#FFFFFF',
+  mastery: ['#E8C9A0', '#95D6B4', '#58C48F', '#1FAF6B'],
 } as const
 
 export const MAP_VIEW = {

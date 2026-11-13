@@ -67,6 +67,14 @@
   text-wrap: balance;
 }
 
+.detail {
+  margin-top: 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-wrap: balance;
+  animation: fade 240ms var(--ease) both;
+}
+
 .stats {
   display: flex;
   align-items: center;
@@ -103,6 +111,15 @@
   color: var(--vermilion-bright);
 }
 
+.tag dd {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgb(168 242 106 / 0.14);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .quit {
   margin-left: auto;
   min-height: 36px;
@@ -125,5 +142,11 @@
   from {
     opacity: 0;
     translate: -50% -12px;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
   }
 }

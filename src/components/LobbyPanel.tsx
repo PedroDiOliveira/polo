@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { CONTINENT_IDS, type ContinentId } from '../data/types'
-import { GLOBAL_MODE, MODE_TOTALS, type ModeId } from '../game/modes'
+import { masteredCount, type Mastery } from '../game/mastery'
+import { GLOBAL_MODE, isWorldwide, MODE_TOTALS, QUICK_MODE, type ModeId } from '../game/modes'
 import type { Records } from '../game/records'
 import { useI18n } from '../i18n/I18nContext'
 import { formatDuration } from '../lib/time'
+import { MAP_COLORS } from '../map/theme'
 import ui from '../styles/primitives.module.css'
 import { Icon } from './Icon'
 import { PlanetMedal } from './PlanetMedal'
@@ -12,14 +14,27 @@ import styles from './LobbyPanel.module.css'
 interface LobbyPanelProps {
   mode: ModeId
   records: Records
+  mastery: Mastery
+  showMastery: boolean
   onModeChange: (mode: ModeId) => void
+  onToggleMastery: () => void
   onPlay: () => void
 }
 
-export function LobbyPanel({ mode, records, onModeChange, onPlay }: LobbyPanelProps) {
+const WORLDWIDE_MODES = [GLOBAL_MODE, QUICK_MODE] as const
+
+export function LobbyPanel({
+  mode,
+  records,
+  mastery,
+  showMastery,
+  onModeChange,
+  onToggleMastery,
+  onPlay,
+}: LobbyPanelProps) {
   const { t } = useI18n()
   const [lastContinent, setLastContinent] = useState<ContinentId>('south-america')
-  const regional = mode !== GLOBAL_MODE
+  const regional = !isWorldwide(mode)
   const total = MODE_TOTALS[mode]
   const record = records[mode]
 
@@ -27,6 +42,14 @@ export function LobbyPanel({ mode, records, onModeChange, onPlay }: LobbyPanelPr
     setLastContinent(continent)
     onModeChange(continent)
   }
+
+  const options = regional
+    ? CONTINENT_IDS.map((id) => ({ id, label: t.continents[id], select: () => selectContinent(id) }))
+    : WORLDWIDE_MODES.map((id) => ({
+        id,
+        label: id === GLOBAL_MODE ? t.modeFull : t.modeQuick,
+        select: () => onModeChange(id),
+      }))
 
   return (
     <section className={`${ui.panel} ${styles.panel}`} aria-label={t.modeLabel}>
@@ -51,29 +74,27 @@ export function LobbyPanel({ mode, records, onModeChange, onPlay }: LobbyPanelPr
         </button>
       </div>
 
-      {regional ? (
-        <div className={styles.continents} role="radiogroup" aria-label={t.continentLabel}>
-          {CONTINENT_IDS.map((continent) => (
-            <button
-              key={continent}
-              type="button"
-              role="radio"
-              aria-checked={mode === continent}
-              className={styles.continent}
-              onClick={() => selectContinent(continent)}
-            >
-              <span>{t.continents[continent]}</span>
-              {records[continent]?.perfectMs !== undefined ? (
-                <PlanetMedal earned size={18} label={t.perfectBadge} />
-              ) : (
-                <span className={`${ui.mono} ${styles.continentCount}`}>{MODE_TOTALS[continent]}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className={styles.note}>{t.modeGlobalNote}</p>
-      )}
+      <div className={styles.options} role="radiogroup" aria-label={regional ? t.continentLabel : t.lengthLabel}>
+        {options.map(({ id, label, select }) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={mode === id}
+            className={styles.option}
+            onClick={select}
+          >
+            <span>{label}</span>
+            {records[id]?.perfectMs !== undefined ? (
+              <PlanetMedal earned size={18} label={t.perfectBadge} />
+            ) : (
+              <span className={`${ui.mono} ${styles.optionCount}`}>{MODE_TOTALS[id]}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {!regional && <p className={styles.note}>{mode === QUICK_MODE ? t.modeQuickNote : t.modeGlobalNote}</p>}
 
       <div className={styles.summary}>
         <div>
@@ -100,6 +121,32 @@ export function LobbyPanel({ mode, records, onModeChange, onPlay }: LobbyPanelPr
           {t.play}
           <span className={`${ui.mono} ${styles.playCount}`}>{total}</span>
         </button>
+      </div>
+
+      <div className={styles.mastery}>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showMastery}
+          className={styles.masteryToggle}
+          onClick={onToggleMastery}
+        >
+          <span className={styles.switch} aria-hidden="true" />
+          <span>{t.masteryToggle}</span>
+          <span className={`${ui.mono} ${styles.masteryCount}`}>
+            {t.masteryCount(masteredCount(mastery), MODE_TOTALS[GLOBAL_MODE])}
+          </span>
+        </button>
+        {showMastery && (
+          <ul className={styles.legend}>
+            {t.masteryLevels.map((label, level) => (
+              <li key={label}>
+                <span className={styles.swatch} style={{ background: MAP_COLORS.mastery[level] }} />
+                {label}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <p className={styles.hint}>
