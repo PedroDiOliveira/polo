@@ -10,6 +10,21 @@
   animation: rise 420ms var(--ease) both;
 }
 
+.game {
+  display: grid;
+  gap: 10px;
+  margin: -4px -2px 0;
+}
+
+.clueNote {
+  padding: 0 8px;
+  color: var(--text-dim);
+  font-size: 14px;
+  text-align: center;
+  text-wrap: balance;
+  animation: note-in 280ms var(--ease) both;
+}
+
 .segmented {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -217,6 +232,13 @@
   width: 10px;
   height: 10px;
   border-radius: 3px;
+}
+
+@keyframes note-in {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
 }
 
 @keyframes rise {

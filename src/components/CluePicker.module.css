@@ -1,0 +1,48 @@
+.picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--text-dim);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: color 200ms var(--ease);
+}
+
+.tab::after {
+  content: '';
+  position: absolute;
+  right: 18%;
+  bottom: -1px;
+  left: 18%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  scale: 0 1;
+  transition: scale 240ms var(--ease);
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab[aria-checked='true'] {
+  color: var(--text);
+}
+
+.tab[aria-checked='true'] svg {
+  color: var(--accent);
+}
+
+.tab[aria-checked='true']::after {
+  scale: 1 1;
+}

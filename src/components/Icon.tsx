@@ -10,6 +10,11 @@ const ICONS = {
   },
   flat: { d: 'm4 6.5 5-2 6 2 5-2v13l-5 2-6-2-5 2zM9 4.5v13M15 6.5v13', filled: false },
   back: { d: 'M19 12H5M11 6l-6 6 6 6', filled: false },
+  capital: { d: 'M3 20h18M5 10v10M9.7 10v10M14.3 10v10M19 10v10M3 10h18l-9-6z', filled: false },
+  pin: {
+    d: 'M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11zM12 12.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4z',
+    filled: false,
+  },
 } as const
 
 export type IconName = keyof typeof ICONS

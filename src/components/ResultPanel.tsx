@@ -3,7 +3,7 @@ import type { Country } from '../data/types'
 import type { RecordOutcome } from '../game/records'
 import type { FinishedSession } from '../game/session'
 import { useI18n } from '../i18n/I18nContext'
-import { modeName } from '../i18n/messages'
+import { roundName } from '../i18n/messages'
 import { formatDuration } from '../lib/time'
 import ui from '../styles/primitives.module.css'
 import { Icon } from './Icon'
@@ -21,7 +21,8 @@ interface ResultPanelProps {
 
 export function ResultPanel({ session, outcome, onPlayAgain, onReview, onLeave, onLocate }: ResultPanelProps) {
   const { locale, t } = useI18n()
-  const { review, total, completed } = session
+  const { clue, review, total, completed } = session
+  const copy = t.clues[clue]
   const correct = session.correct.length
   const perfect = outcome?.isPerfect ?? false
   const missed = session.wrong.flatMap((code) => getCountry(code) ?? [])
@@ -44,10 +45,10 @@ export function ResultPanel({ session, outcome, onPlayAgain, onReview, onLeave, 
           </div>
         )}
         <div>
-          <p className={ui.eyebrow}>{review ? t.reviewTag : modeName(t, session.mode)}</p>
+          <p className={ui.eyebrow}>{review ? `${t.reviewTag} · ${copy.name}` : roundName(t, clue, session.mode)}</p>
           <h2 className={styles.title}>{title}</h2>
         </div>
-        <p className={`${ui.mono} ${styles.score}`} aria-label={t.resultScore(correct, total)}>
+        <p className={`${ui.mono} ${styles.score}`} aria-label={copy.score(correct, total)}>
           {correct}
           <span className={styles.total}>/{total}</span>
         </p>
@@ -59,7 +60,7 @@ export function ResultPanel({ session, outcome, onPlayAgain, onReview, onLeave, 
           <span className={ui.mono}>{formatDuration(session.elapsedMs)}</span>
         </li>
         <li className={styles.correct}>
-          <span className={ui.eyebrow}>{review ? t.statReviewed : t.statCorrect}</span>
+          <span className={ui.eyebrow}>{review ? copy.reviewed : t.statCorrect}</span>
           <span className={ui.mono}>{correct}</span>
         </li>
         {!review && (
@@ -89,14 +90,20 @@ export function ResultPanel({ session, outcome, onPlayAgain, onReview, onLeave, 
                   onClick={() => onLocate(country)}
                   aria-label={t.showOnMap(country.name[locale])}
                 >
-                  <span className={styles.missedCapital}>{country.capital[locale]}</span>
-                  <span className={styles.missedCountry}>{country.name[locale]}</span>
+                  {clue === 'capital' ? (
+                    <>
+                      <span className={styles.missedMain}>{country.capital[locale]}</span>
+                      <span className={styles.missedSub}>{country.name[locale]}</span>
+                    </>
+                  ) : (
+                    <span className={styles.missedMain}>{country.name[locale]}</span>
+                  )}
                 </button>
               </li>
             ))}
           </ul>
           <div className={styles.offer}>
-            <p>{t.reviewOffer(missed.length)}</p>
+            <p>{copy.reviewOffer(missed.length)}</p>
             <button type="button" className={styles.offerButton} onClick={onReview}>
               {t.reviewStart}
             </button>

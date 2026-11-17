@@ -58,7 +58,7 @@
   color: var(--vermilion-bright);
 }
 
-.capital {
+.target {
   margin-top: 2px;
   font-size: clamp(26px, 6vw, 38px);
   font-weight: 600;

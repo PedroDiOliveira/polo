@@ -40,6 +40,8 @@ Polo asks the spatial question instead. It shows a capital and you have to click
 
 ![The lobby: a globe with capital labels appearing by zoom level, and the mode selector](docs/screenshots/lobby.png)
 
+**Two games.** In *Capitals*, a capital is shown and you click its country. In *Countries*, a country is shown and you find it on the map. A tab row at the top of the lobby switches between them, with one line underneath that says what the selected game asks of you. Every mode below works in both games. In *Countries* the hover tooltip is switched off during a round, since the country's name is the question.
+
 **Game modes.**
 
 | Mode | Pool | Length |
@@ -51,7 +53,7 @@ Polo asks the spatial question instead. It shows a capital and you have to click
 **A round.**
 
 1. A capital is drawn at random and shown at the top of the screen.
-2. You click the country it belongs to. Hovering a territory shows only the country name.
+2. You click the country it belongs to. Hovering a territory shows only the country name (in *Capitals*; in *Countries* nothing is shown).
 3. **Correct:** the country turns green and stays green.
 4. **Wrong:** the right country pulses in amber, a pin marks the capital itself, and the panel tells you which country you clicked and what its capital is. The camera moves to the answer if it is off screen. The country then settles to hatched red for the rest of the game.
 
@@ -59,9 +61,9 @@ Every capital in the pool is asked once. A miss does not end the game.
 
 **Optional review round.** The result screen lists what you missed, and each entry flies the map to that country. If there were misses, the game offers a review: only those capitals, on a clean map, each one coming back a few questions later until you get it right. It is an offer, never a gate, and it does not touch your score.
 
-**Mastery map.** A switch in the lobby colours every country by how well you know it, across all the games you have played. Four levels, from "learning" to "mastered"; a correct first answer moves a country up one level and a miss moves it down.
+**Mastery map.** A switch in the lobby colours every country by how well you know it, across all the games you have played. Each game keeps its own map, because knowing Paris and knowing where France is are different skills. Four levels, from "learning" to "mastered"; a correct first answer moves a country up one level and a miss moves it down.
 
-**Personal bests.** The best score is stored per mode and per continent. A perfect run earns a planet medal and records the time it took; a faster perfect run replaces it.
+**Personal bests.** The best score is stored per game, per mode and per continent. A perfect run earns a planet medal and records the time it took; a faster perfect run replaces it.
 
 **Also included.** Globe and flat projections, English and Brazilian Portuguese (picked from the browser language), touch support, and reduced-motion support.
 
@@ -151,7 +153,7 @@ Only the survivors exist in the DOM, usually between 5 and 40 elements. Labels a
 
 **Progress stays in the browser, and is built to survive.** Two things are stored, both first-party and both only on the player's device:
 
-- **Personal bests** live in one cookie, `polo_pb` (`SameSite=Lax`, `Secure` over HTTPS, about 100 bytes), and are mirrored in `localStorage`. On load the two copies are merged, keeping the best score and the fastest perfect time, and both are written back. That renews the cookie's one-year expiry on every visit and lets either store restore the other if one is cleared or expires.
+- **Personal bests** live in one cookie, `polo_pb` (`SameSite=Lax`, `Secure` over HTTPS, a few hundred bytes), and are mirrored in `localStorage`. Records saved before the country game existed are read as capital records, so nobody loses progress. On load the two copies are merged, keeping the best score and the fastest perfect time, and both are written back. That renews the cookie's one-year expiry on every visit and lets either store restore the other if one is cleared or expires.
 - **Mastery levels**, one small number per country, live in `localStorage`.
 
 Nothing else is stored; even the language choice is re-detected on each visit. After a finished game the app also asks the browser for persistent storage, so the data is not evicted under disk pressure. Everything read from storage is validated field by field: unknown modes or countries, impossible scores and a perfect time without a perfect score are discarded, so hand-edited data cannot break the interface.
@@ -228,7 +230,7 @@ Any other static host works too: run `npm run build` and serve `dist/`.
 ## What I would build next
 
 - **Keyboard play.** A searchable country list as an alternative to clicking, so the game is fully playable without a pointer.
-- **More question types.** Flags, country shapes, or the reverse (given a country, name the capital).
+- **More question types.** Flags or country shapes, built on the same clue model as *Capitals* and *Countries*.
 - **Practice from the mastery map.** A game built from the countries currently at the lowest levels.
 - **A "no hints" option.** Hiding country names on hover, for players who want the harder recall.
 - **Shareable results.** A generated image of the final map, with no server involved.

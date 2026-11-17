@@ -1,4 +1,4 @@
-import type { ModeId } from './modes'
+import type { Clue, ModeId } from './modes'
 
 export interface Feedback {
   kind: 'correct' | 'wrong'
@@ -7,6 +7,7 @@ export interface Feedback {
 }
 
 export interface Round {
+  clue: Clue
   mode: ModeId
   review: boolean
   queue: readonly string[]
@@ -22,7 +23,7 @@ export type FinishedSession = { phase: 'finished'; elapsedMs: number; completed:
 export type Session = { phase: 'lobby' } | PlayingSession | FinishedSession
 
 export type SessionAction =
-  | { type: 'start'; mode: ModeId; queue: readonly string[]; now: number; review?: boolean }
+  | { type: 'start'; clue: Clue; mode: ModeId; queue: readonly string[]; now: number; review?: boolean }
   | { type: 'answer'; picked: string }
   | { type: 'advance'; now: number }
   | { type: 'quit'; now: number }
@@ -30,7 +31,7 @@ export type SessionAction =
 
 export const INITIAL_SESSION: Session = { phase: 'lobby' }
 
-// In a review round a missed capital comes back after this many other questions.
+// In a review round a missed question comes back after this many other questions.
 const REVIEW_GAP = 3
 
 export function isResolved(session: Session, code: string): boolean {
@@ -43,6 +44,7 @@ export function sessionReducer(session: Session, action: SessionAction): Session
       if (action.queue.length === 0) return session
       return {
         phase: 'playing',
+        clue: action.clue,
         mode: action.mode,
         review: action.review ?? false,
         queue: action.queue,
@@ -85,9 +87,10 @@ export function sessionReducer(session: Session, action: SessionAction): Session
 }
 
 function finish(session: PlayingSession, now: number, completed: boolean): FinishedSession {
-  const { mode, review, queue, index, total, correct, wrong, startedAt } = session
+  const { clue, mode, review, queue, index, total, correct, wrong, startedAt } = session
   return {
     phase: 'finished',
+    clue,
     mode,
     review,
     queue,

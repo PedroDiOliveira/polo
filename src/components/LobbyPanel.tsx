@@ -1,21 +1,24 @@
 import { useState } from 'react'
 import { CONTINENT_IDS, type ContinentId } from '../data/types'
 import { masteredCount, type Mastery } from '../game/mastery'
-import { GLOBAL_MODE, isWorldwide, MODE_TOTALS, QUICK_MODE, type ModeId } from '../game/modes'
+import { GLOBAL_MODE, isWorldwide, MODE_TOTALS, QUICK_MODE, type Clue, type ModeId } from '../game/modes'
 import type { Records } from '../game/records'
 import { useI18n } from '../i18n/I18nContext'
 import { formatDuration } from '../lib/time'
 import { MAP_COLORS } from '../map/theme'
 import ui from '../styles/primitives.module.css'
+import { CluePicker } from './CluePicker'
 import { Icon } from './Icon'
 import { PlanetMedal } from './PlanetMedal'
 import styles from './LobbyPanel.module.css'
 
 interface LobbyPanelProps {
+  clue: Clue
   mode: ModeId
   records: Records
   mastery: Mastery
   showMastery: boolean
+  onClueChange: (clue: Clue) => void
   onModeChange: (mode: ModeId) => void
   onToggleMastery: () => void
   onPlay: () => void
@@ -24,10 +27,12 @@ interface LobbyPanelProps {
 const WORLDWIDE_MODES = [GLOBAL_MODE, QUICK_MODE] as const
 
 export function LobbyPanel({
+  clue,
   mode,
   records,
   mastery,
   showMastery,
+  onClueChange,
   onModeChange,
   onToggleMastery,
   onPlay,
@@ -36,7 +41,8 @@ export function LobbyPanel({
   const [lastContinent, setLastContinent] = useState<ContinentId>('south-america')
   const regional = !isWorldwide(mode)
   const total = MODE_TOTALS[mode]
-  const record = records[mode]
+  const deck = records[clue] ?? {}
+  const record = deck[mode]
 
   const selectContinent = (continent: ContinentId) => {
     setLastContinent(continent)
@@ -53,6 +59,14 @@ export function LobbyPanel({
 
   return (
     <section className={`${ui.panel} ${styles.panel}`} aria-label={t.modeLabel}>
+      <div className={styles.game}>
+        <CluePicker value={clue} onChange={onClueChange} />
+        {/* Re-keyed so the line fades in again on every switch: the change of game is impossible to miss. */}
+        <p key={clue} className={styles.clueNote}>
+          {t.clues[clue].note}
+        </p>
+      </div>
+
       <div className={styles.segmented} role="radiogroup" aria-label={t.modeLabel}>
         <button
           type="button"
@@ -85,7 +99,7 @@ export function LobbyPanel({
             onClick={select}
           >
             <span>{label}</span>
-            {records[id]?.perfectMs !== undefined ? (
+            {deck[id]?.perfectMs !== undefined ? (
               <PlanetMedal earned size={18} label={t.perfectBadge} />
             ) : (
               <span className={`${ui.mono} ${styles.optionCount}`}>{MODE_TOTALS[id]}</span>
@@ -94,7 +108,7 @@ export function LobbyPanel({
         ))}
       </div>
 
-      {!regional && <p className={styles.note}>{mode === QUICK_MODE ? t.modeQuickNote : t.modeGlobalNote}</p>}
+      {!regional && <p className={styles.note}>{mode === QUICK_MODE ? t.clues[clue].quickNote : t.modeGlobalNote}</p>}
 
       <div className={styles.summary}>
         <div>

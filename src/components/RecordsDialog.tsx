@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
-import { MODE_IDS, MODE_TOTALS } from '../game/modes'
+import { MODE_IDS, MODE_TOTALS, type Clue } from '../game/modes'
 import type { Records } from '../game/records'
 import { useI18n } from '../i18n/I18nContext'
 import { modeName } from '../i18n/messages'
 import { formatDuration } from '../lib/time'
 import ui from '../styles/primitives.module.css'
+import { CluePicker } from './CluePicker'
 import { Icon } from './Icon'
 import { PlanetMedal } from './PlanetMedal'
 import styles from './RecordsDialog.module.css'
@@ -12,10 +13,13 @@ import styles from './RecordsDialog.module.css'
 interface RecordsDialogProps {
   open: boolean
   records: Records
+  clue: Clue
+  onClueChange: (clue: Clue) => void
   onClose: () => void
 }
 
-export function RecordsDialog({ open, records, onClose }: RecordsDialogProps) {
+// Shares the lobby's choice of game, so what the dialog shows always matches the panel behind it.
+export function RecordsDialog({ open, records, clue, onClueChange, onClose }: RecordsDialogProps) {
   const { t } = useI18n()
   const dialogRef = useRef<HTMLDialogElement>(null)
 
@@ -46,9 +50,11 @@ export function RecordsDialog({ open, records, onClose }: RecordsDialogProps) {
           </button>
         </header>
 
+        <CluePicker value={clue} onChange={onClueChange} className={styles.picker} />
+
         <ul className={styles.list}>
           {MODE_IDS.map((mode) => {
-            const record = records[mode]
+            const record = records[clue]?.[mode]
             const total = MODE_TOTALS[mode]
             const perfect = record?.perfectMs !== undefined
             return (
@@ -60,7 +66,7 @@ export function RecordsDialog({ open, records, onClose }: RecordsDialogProps) {
                     {record?.perfectMs !== undefined
                       ? t.perfectIn(formatDuration(record.perfectMs))
                       : record
-                        ? t.capitals(total)
+                        ? t.clues[clue].count(total)
                         : t.noRecord}
                   </p>
                   <div className={styles.bar} aria-hidden="true">

@@ -117,11 +117,11 @@
   background: var(--surface-hover);
 }
 
-.missedCapital {
+.missedMain {
   font-weight: 600;
 }
 
-.missedCountry {
+.missedSub {
   color: var(--text-dim);
 }
 

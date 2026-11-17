@@ -2,12 +2,19 @@ import { describe, expect, it } from 'vitest'
 import { INITIAL_SESSION, sessionReducer, type Session } from './session'
 
 const start = (queue: string[]): Session =>
-  sessionReducer(INITIAL_SESSION, { type: 'start', mode: 'south-america', queue, now: 1_000 })
+  sessionReducer(INITIAL_SESSION, { type: 'start', clue: 'capital', mode: 'south-america', queue, now: 1_000 })
 
 describe('sessionReducer', () => {
   it('starts a round on the first capital of the queue', () => {
     const session = start(['BRA', 'ARG'])
     expect(session).toMatchObject({ phase: 'playing', index: 0, correct: [], wrong: [], feedback: null })
+  })
+
+  it('keeps the clue of the round through to the result', () => {
+    let session = sessionReducer(INITIAL_SESSION, { type: 'start', clue: 'country', mode: 'europe', queue: ['FRA'], now: 0 })
+    expect(session).toMatchObject({ phase: 'playing', clue: 'country' })
+    session = sessionReducer(sessionReducer(session, { type: 'answer', picked: 'FRA' }), { type: 'advance', now: 1 })
+    expect(session).toMatchObject({ phase: 'finished', clue: 'country', correct: ['FRA'] })
   })
 
   it('ignores a start without countries', () => {
@@ -47,7 +54,7 @@ describe('sessionReducer', () => {
 
   describe('review round', () => {
     const review = (queue: string[]): Session =>
-      sessionReducer(INITIAL_SESSION, { type: 'start', mode: 'south-america', queue, now: 0, review: true })
+      sessionReducer(INITIAL_SESSION, { type: 'start', clue: 'capital', mode: 'south-america', queue, now: 0, review: true })
     const play = (session: Session, picked: string): Session =>
       sessionReducer(sessionReducer(session, { type: 'answer', picked }), { type: 'advance', now: 1 })
 

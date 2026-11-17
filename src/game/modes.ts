@@ -1,6 +1,15 @@
 import { CONTINENT_IDS, type ContinentId, type Country } from '../data/types'
 import { COUNTRIES } from '../data/world'
 
+// What the prompt shows: a capital to place, or a country to find. Both are answered by clicking a country.
+export const CLUES = ['capital', 'country'] as const
+export type Clue = (typeof CLUES)[number]
+export const DEFAULT_CLUE: Clue = 'capital'
+
+export function isClue(value: string): value is Clue {
+  return (CLUES as readonly string[]).includes(value)
+}
+
 export const GLOBAL_MODE = 'global'
 export const QUICK_MODE = 'quick'
 export const QUICK_SIZE = 20

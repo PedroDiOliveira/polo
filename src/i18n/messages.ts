@@ -1,27 +1,39 @@
 import type { ContinentId, Locale } from '../data/types'
-import type { ModeId } from '../game/modes'
+import type { Clue, ModeId } from '../game/modes'
+
+// Everything that reads differently in the capital game and in the country game.
+export interface ClueMessages {
+  name: string
+  note: string
+  prompt: string
+  correctAnswer: (country: string) => string
+  wrongAnswer: (country: string) => string
+  wrongDetail: (country: string, capital: string) => string
+  count: (count: number) => string
+  score: (correct: number, total: number) => string
+  quickNote: string
+  reviewOffer: (count: number) => string
+  reviewed: string
+}
 
 export interface Messages {
   mapLabel: string
   mapLoading: string
   mapError: string
   lobbyHint: string
+  clueLabel: string
+  clues: Record<Clue, ClueMessages>
   modeLabel: string
   modeGlobal: string
   modeRegional: string
   modeGlobalNote: string
-  modeRegionalNote: string
   continentLabel: string
   continents: Record<ContinentId, string>
-  capitals: (count: number) => string
   play: string
   personalBest: string
   noRecord: string
   perfectIn: (time: string) => string
   perfectBadge: string
-  prompt: string
-  correctAnswer: (country: string) => string
-  wrongAnswer: (country: string) => string
   progress: (current: number, total: number) => string
   statCorrect: string
   statWrong: string
@@ -30,7 +42,6 @@ export interface Messages {
   resultPerfect: string
   resultCompleted: string
   resultEnded: string
-  resultScore: (correct: number, total: number) => string
   newBest: string
   fastestPerfect: string
   playAgain: string
@@ -47,15 +58,11 @@ export interface Messages {
   modeFull: string
   modeQuick: string
   modeQuickName: string
-  modeQuickNote: string
   lengthLabel: string
-  wrongDetail: (country: string, capital: string) => string
   reviewTag: string
-  reviewOffer: (count: number) => string
   reviewStart: string
   reviewDone: string
   reviewEnded: string
-  statReviewed: string
   missedTitle: string
   showOnMap: (country: string) => string
   masteryToggle: string
@@ -68,11 +75,45 @@ const en: Messages = {
   mapLoading: 'Loading the world…',
   mapError: 'The map could not be loaded. Check that WebGL is enabled and reload the page.',
   lobbyHint: 'Zoom in on a country to reveal its capital.',
+  clueLabel: 'Game',
+  clues: {
+    capital: {
+      name: 'Capitals',
+      note: 'We show a capital. You click its country.',
+      prompt: 'Which country has this capital?',
+      correctAnswer: (country) => `Correct: ${country}`,
+      wrongAnswer: (country) => `It was ${country}`,
+      wrongDetail: (country, capital) => `You clicked ${country} (capital: ${capital})`,
+      count: (count) => `${count} capitals`,
+      score: (correct, total) => `${correct} of ${total} capitals`,
+      quickNote: '20 capitals drawn from the whole world.',
+      reviewOffer: (count) =>
+        count === 1
+          ? 'Want to review the one you missed? It comes back until you get it right.'
+          : `Want to review the ${count} you missed? Each one comes back until you get it right.`,
+      reviewed: 'Reviewed',
+    },
+    country: {
+      name: 'Countries',
+      note: 'We show a country. You find it on the map.',
+      prompt: 'Where is this country?',
+      correctAnswer: () => 'Correct',
+      wrongAnswer: () => 'Missed. See where it is on the map',
+      wrongDetail: (country) => `You clicked ${country}`,
+      count: (count) => `${count} countries`,
+      score: (correct, total) => `${correct} of ${total} countries`,
+      quickNote: '20 countries drawn from the whole world.',
+      reviewOffer: (count) =>
+        count === 1
+          ? 'Want to review the one you missed? It comes back until you find it.'
+          : `Want to review the ${count} you missed? Each one comes back until you find it.`,
+      reviewed: 'Reviewed',
+    },
+  },
   modeLabel: 'Game mode',
   modeGlobal: 'Global',
   modeRegional: 'Regional',
   modeGlobalNote: 'Every country in the world. A long game.',
-  modeRegionalNote: 'Pick a continent and play only its countries.',
   continentLabel: 'Continent',
   continents: {
     africa: 'Africa',
@@ -82,15 +123,11 @@ const en: Messages = {
     'south-america': 'South America',
     oceania: 'Oceania',
   },
-  capitals: (count) => `${count} capitals`,
   play: 'Play',
   personalBest: 'Personal best',
   noRecord: 'No record yet',
   perfectIn: (time) => `Perfect in ${time}`,
   perfectBadge: 'Perfect run',
-  prompt: 'Which country has this capital?',
-  correctAnswer: (country) => `Correct: ${country}`,
-  wrongAnswer: (country) => `It was ${country}`,
   progress: (current, total) => `${current} of ${total}`,
   statCorrect: 'Correct',
   statWrong: 'Wrong',
@@ -99,13 +136,12 @@ const en: Messages = {
   resultPerfect: 'Perfect run',
   resultCompleted: 'Round complete',
   resultEnded: 'Game ended',
-  resultScore: (correct, total) => `${correct} of ${total} capitals`,
   newBest: 'New personal best',
   fastestPerfect: 'Fastest perfect run',
   playAgain: 'Play again',
   backToLobby: 'Back to lobby',
   records: 'Records',
-  recordsNote: 'Your records and mastery map are saved only in this browser. Clearing its site data erases them.',
+  recordsNote: 'Your records and mastery maps are saved only in this browser. Clearing its site data erases them.',
   close: 'Close',
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
@@ -116,18 +152,11 @@ const en: Messages = {
   modeFull: 'Full',
   modeQuick: 'Quick',
   modeQuickName: 'Quick global',
-  modeQuickNote: '20 capitals drawn from the whole world.',
   lengthLabel: 'Length',
-  wrongDetail: (country, capital) => `You clicked ${country} (capital: ${capital})`,
   reviewTag: 'Review',
-  reviewOffer: (count) =>
-    count === 1
-      ? 'Want to review the one you missed? It comes back until you get it right.'
-      : `Want to review the ${count} you missed? Each one comes back until you get it right.`,
   reviewStart: 'Review misses',
   reviewDone: 'Review complete',
   reviewEnded: 'Review ended',
-  statReviewed: 'Reviewed',
   missedTitle: 'Missed',
   showOnMap: (country) => `Show ${country} on the map`,
   masteryToggle: 'Mastery map',
@@ -140,11 +169,45 @@ const pt: Messages = {
   mapLoading: 'Carregando o mundo…',
   mapError: 'Não foi possível carregar o mapa. Verifique se o WebGL está ativo e recarregue a página.',
   lobbyHint: 'Aproxime-se de um país para revelar a capital.',
+  clueLabel: 'Jogo',
+  clues: {
+    capital: {
+      name: 'Capitais',
+      note: 'Mostramos uma capital. Você clica no país dela.',
+      prompt: 'De qual país é esta capital?',
+      correctAnswer: (country) => `Correto: ${country}`,
+      wrongAnswer: (country) => `Era ${country}`,
+      wrongDetail: (country, capital) => `Você clicou em ${country} (capital: ${capital})`,
+      count: (count) => `${count} capitais`,
+      score: (correct, total) => `${correct} de ${total} capitais`,
+      quickNote: '20 capitais sorteadas do mundo todo.',
+      reviewOffer: (count) =>
+        count === 1
+          ? 'Quer revisar o erro agora? A capital volta até você acertar.'
+          : `Quer revisar os ${count} erros agora? Cada capital volta até você acertar.`,
+      reviewed: 'Revisadas',
+    },
+    country: {
+      name: 'Países',
+      note: 'Mostramos um país. Você o encontra no mapa.',
+      prompt: 'Onde fica este país?',
+      correctAnswer: () => 'Correto',
+      wrongAnswer: () => 'Errou. Veja onde fica no mapa',
+      wrongDetail: (country) => `Você clicou em ${country}`,
+      count: (count) => `${count} países`,
+      score: (correct, total) => `${correct} de ${total} países`,
+      quickNote: '20 países sorteados do mundo todo.',
+      reviewOffer: (count) =>
+        count === 1
+          ? 'Quer revisar o erro agora? O país volta até você acertar.'
+          : `Quer revisar os ${count} erros agora? Cada país volta até você acertar.`,
+      reviewed: 'Revisados',
+    },
+  },
   modeLabel: 'Modo de jogo',
   modeGlobal: 'Global',
   modeRegional: 'Regional',
   modeGlobalNote: 'Todos os países do mundo. Uma partida longa.',
-  modeRegionalNote: 'Escolha um continente e jogue só com os países dele.',
   continentLabel: 'Continente',
   continents: {
     africa: 'África',
@@ -154,15 +217,11 @@ const pt: Messages = {
     'south-america': 'América do Sul',
     oceania: 'Oceania',
   },
-  capitals: (count) => `${count} capitais`,
   play: 'Jogar',
   personalBest: 'Recorde pessoal',
   noRecord: 'Sem recorde ainda',
   perfectIn: (time) => `Gabarito em ${time}`,
   perfectBadge: 'Gabarito',
-  prompt: 'De qual país é esta capital?',
-  correctAnswer: (country) => `Correto: ${country}`,
-  wrongAnswer: (country) => `Era ${country}`,
   progress: (current, total) => `${current} de ${total}`,
   statCorrect: 'Acertos',
   statWrong: 'Erros',
@@ -171,13 +230,12 @@ const pt: Messages = {
   resultPerfect: 'Gabarito!',
   resultCompleted: 'Partida concluída',
   resultEnded: 'Partida encerrada',
-  resultScore: (correct, total) => `${correct} de ${total} capitais`,
   newBest: 'Novo recorde pessoal',
   fastestPerfect: 'Gabarito mais rápido',
   playAgain: 'Jogar de novo',
   backToLobby: 'Voltar ao lobby',
   records: 'Recordes',
-  recordsNote: 'Seus recordes e o mapa de domínio ficam salvos só neste navegador. Limpar os dados do site apaga tudo.',
+  recordsNote: 'Seus recordes e mapas de domínio ficam salvos só neste navegador. Limpar os dados do site apaga tudo.',
   close: 'Fechar',
   zoomIn: 'Aproximar',
   zoomOut: 'Afastar',
@@ -188,18 +246,11 @@ const pt: Messages = {
   modeFull: 'Completa',
   modeQuick: 'Rápida',
   modeQuickName: 'Global rápida',
-  modeQuickNote: '20 capitais sorteadas do mundo todo.',
   lengthLabel: 'Duração',
-  wrongDetail: (country, capital) => `Você clicou em ${country} (capital: ${capital})`,
   reviewTag: 'Revisão',
-  reviewOffer: (count) =>
-    count === 1
-      ? 'Quer revisar o erro agora? A capital volta até você acertar.'
-      : `Quer revisar os ${count} erros agora? Cada capital volta até você acertar.`,
   reviewStart: 'Revisar erros',
   reviewDone: 'Revisão concluída',
   reviewEnded: 'Revisão encerrada',
-  statReviewed: 'Revisadas',
   missedTitle: 'Erros',
   showOnMap: (country) => `Mostrar ${country} no mapa`,
   masteryToggle: 'Mapa de domínio',
@@ -213,4 +264,9 @@ export function modeName(messages: Messages, mode: ModeId): string {
   if (mode === 'global') return messages.modeGlobal
   if (mode === 'quick') return messages.modeQuickName
   return messages.continents[mode]
+}
+
+// "Countries · Europe": the game and the pool, for places that show a round out of the lobby's context.
+export function roundName(messages: Messages, clue: Clue, mode: ModeId): string {
+  return `${messages.clues[clue].name} · ${modeName(messages, mode)}`
 }

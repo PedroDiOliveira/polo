@@ -8,7 +8,8 @@ import { describePlace, getCountry } from './data/world'
 import { CONTINENT_BOUNDS } from './game/camera'
 import type { Country } from './data/types'
 import { groupByLevel } from './game/mastery'
-import { GLOBAL_MODE, isWorldwide, type ModeId } from './game/modes'
+import { DEFAULT_CLUE, GLOBAL_MODE, isWorldwide, type Clue, type ModeId } from './game/modes'
+import { countPerfects } from './game/records'
 import { FEEDBACK_MS, useGame } from './hooks/useGame'
 import { useI18n } from './i18n/I18nContext'
 import type { MapFill } from './map/layers'
@@ -23,12 +24,15 @@ const NONE: readonly string[] = []
 export function App() {
   const { locale } = useI18n()
   const { session, outcome, records, mastery, start, review, answer, quit, leave } = useGame()
+  const [clue, setClue] = useState<Clue>(DEFAULT_CLUE)
   const [mode, setMode] = useState<ModeId>(GLOBAL_MODE)
   const [focus, setFocus] = useState<MapFocus>({ id: 0, bounds: null })
   const [recordsOpen, setRecordsOpen] = useState(false)
   const [showMastery, setShowMastery] = useState(false)
 
   const playing = session.phase === 'playing'
+  // Outside the lobby the round's own clue wins, even if the records dialog switched the lobby's choice meanwhile.
+  const activeClue = session.phase === 'lobby' ? clue : session.clue
   const feedback = playing ? session.feedback : null
   const correct = session.phase === 'lobby' ? NONE : session.correct
   const allWrong = session.phase === 'lobby' ? NONE : session.wrong
@@ -41,35 +45,39 @@ export function App() {
 
   const fills = useMemo<MapFill[]>(() => {
     if (session.phase === 'lobby' && showMastery) {
-      return groupByLevel(mastery).map((codes, level) => ({ color: MAP_COLORS.mastery[level], codes }))
+      return groupByLevel(mastery[clue]).map((codes, level) => ({ color: MAP_COLORS.mastery[level], codes }))
     }
     return [
       { color: MAP_COLORS.correct, codes: correct },
       { color: MAP_COLORS.wrong, codes: wrong },
     ]
-  }, [session.phase, showMastery, mastery, correct, wrong])
+  }, [session.phase, showMastery, mastery, clue, correct, wrong])
 
   const signal = useMemo<MapSignal | null>(() => {
     const target = feedback && getCountry(feedback.target)
     if (!feedback || !target) return null
+    const [capital, name] = [target.capital[locale], target.name[locale]]
     return {
       code: target.code,
       kind: feedback.kind,
-      label: `${target.capital[locale]} · ${target.name[locale]}`,
+      // The clue comes first, the answer second: "Paris · France" or "France · Paris".
+      label: activeClue === 'capital' ? `${capital} · ${name}` : `${name} · ${capital}`,
       durationMs: FEEDBACK_MS[feedback.kind],
     }
-  }, [feedback, locale])
+  }, [feedback, locale, activeClue])
 
   const tooltipFor = useCallback(
     (code: string) => {
       const place = describePlace(code)
       if (!place) return null
+      // In the country game the name is the question itself, so hovering must not reveal it.
+      if (playing && activeClue === 'country') return null
       if (playing) return (place.owner ?? place).name[locale]
       return place.owner && !place.isCountry
         ? `${place.name[locale]} · ${place.owner.name[locale]}`
         : place.name[locale]
     },
-    [locale, playing],
+    [locale, playing, activeClue],
   )
 
   const handlePick = (code: string) => {
@@ -83,8 +91,8 @@ export function App() {
       bounds: isWorldwide(selected) ? null : CONTINENT_BOUNDS[selected],
     }))
 
-  const play = (selected: ModeId) => {
-    start(selected)
+  const play = (selectedClue: Clue, selected: ModeId) => {
+    start(selectedClue, selected)
     frame(selected)
   }
 
@@ -96,7 +104,7 @@ export function App() {
 
   const locate = (country: Country) => setFocus((current) => ({ id: current.id + 1, bounds: country.bounds }))
 
-  const perfectCount = Object.values(records).filter((record) => record.perfectMs !== undefined).length
+  const perfectCount = countPerfects(records)
 
   return (
     <main>
@@ -115,13 +123,15 @@ export function App() {
       <Header perfectCount={perfectCount} onOpenRecords={() => setRecordsOpen(true)} />
       {session.phase === 'lobby' && (
         <LobbyPanel
+          clue={clue}
           mode={mode}
           records={records}
-          mastery={mastery}
+          mastery={mastery[clue]}
           showMastery={showMastery}
+          onClueChange={setClue}
           onModeChange={setMode}
           onToggleMastery={() => setShowMastery((current) => !current)}
-          onPlay={() => play(mode)}
+          onPlay={() => play(clue, mode)}
         />
       )}
       {session.phase === 'playing' && <GameHud session={session} onQuit={quit} />}
@@ -129,13 +139,19 @@ export function App() {
         <ResultPanel
           session={session}
           outcome={outcome}
-          onPlayAgain={() => play(session.mode)}
+          onPlayAgain={() => play(session.clue, session.mode)}
           onReview={startReview}
           onLeave={leave}
           onLocate={locate}
         />
       )}
-      <RecordsDialog open={recordsOpen} records={records} onClose={() => setRecordsOpen(false)} />
+      <RecordsDialog
+        open={recordsOpen}
+        records={records}
+        clue={clue}
+        onClueChange={setClue}
+        onClose={() => setRecordsOpen(false)}
+      />
     </main>
   )
 }
