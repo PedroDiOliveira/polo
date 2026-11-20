@@ -31,6 +31,12 @@ setWorkerUrl(workerUrl)
 export type ProjectionName = 'globe' | 'mercator'
 export type SignalKind = 'correct' | 'wrong'
 
+// Screen space covered by an overlay; the camera centres the world in what is left.
+export interface MapInset {
+  left: number
+  bottom: number
+}
+
 export interface MapCallbacks {
   onReady(): void
   onError(): void
@@ -59,6 +65,7 @@ export class MapController {
   private signalFrame = 0
   private signalMarker: Marker | null = null
   private projection: ProjectionName = 'globe'
+  private inset: MapInset = { left: 0, bottom: 0 }
 
   constructor(
     container: HTMLElement,
@@ -147,10 +154,23 @@ export class MapController {
     this.setSignalOpacity(0)
   }
 
+  setInset(inset: MapInset): void {
+    if (inset.left === this.inset.left && inset.bottom === this.inset.bottom) return
+    this.inset = inset
+    // Before the first frame there is nothing to animate: start already centred in the free space.
+    if (!this.ready) this.map.setPadding(this.padding())
+    else this.map.easeTo({ padding: this.padding(), duration: this.duration(600) })
+  }
+
   focus(bounds: Bounds | null): void {
     this.whenReady(() => {
       if (!bounds) {
-        this.map.easeTo({ center: MAP_VIEW.center, zoom: MAP_VIEW.zoom, duration: this.duration(900) })
+        this.map.easeTo({
+          center: MAP_VIEW.center,
+          zoom: MAP_VIEW.zoom,
+          padding: this.padding(),
+          duration: this.duration(900),
+        })
         return
       }
       this.fit(bounds, 6)
@@ -172,6 +192,10 @@ export class MapController {
     else this.pending.push(task)
   }
 
+  private padding() {
+    return { top: 0, right: 0, left: this.inset.left, bottom: this.inset.bottom }
+  }
+
   private duration(ms: number): number {
     return this.reducedMotion ? 0 : ms
   }
@@ -187,13 +211,15 @@ export class MapController {
         [west, south],
         [east, north],
       ],
-      { padding: { top, bottom, left: side, right: side }, maxZoom },
+      // Absolute: the zoom must not shrink because the lobby panel's inset is still on the map when a round starts.
+      { padding: { top, bottom, left: side, right: side }, maxZoom, absolutePadding: true },
     )
     // Centre on the middle of the bounds ourselves: on the globe, the fitted centre drifts towards the pole.
     this.map.easeTo({
       center: [(west + east) / 2, (south + north) / 2],
       zoom: camera?.zoom ?? this.map.getZoom(),
       offset: [0, (top - bottom) / 2],
+      padding: this.padding(),
       duration: this.duration(900),
     })
   }

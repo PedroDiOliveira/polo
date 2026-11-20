@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { CONTINENT_IDS, type ContinentId } from '../data/types'
 import { masteredCount, type Mastery } from '../game/mastery'
 import { GLOBAL_MODE, isWorldwide, MODE_TOTALS, QUICK_MODE, type Clue, type ModeId } from '../game/modes'
 import type { Records } from '../game/records'
 import { useI18n } from '../i18n/I18nContext'
+import { roundName } from '../i18n/messages'
+import { readLocal, writeLocal } from '../lib/storage'
 import { formatDuration } from '../lib/time'
+import type { MapInset } from '../map/MapView'
 import { MAP_COLORS } from '../map/theme'
 import ui from '../styles/primitives.module.css'
 import { CluePicker } from './CluePicker'
@@ -22,9 +25,13 @@ interface LobbyPanelProps {
   onModeChange: (mode: ModeId) => void
   onToggleMastery: () => void
   onPlay: () => void
+  onInsetChange: (inset: MapInset) => void
 }
 
 const WORLDWIDE_MODES = [GLOBAL_MODE, QUICK_MODE] as const
+const COLLAPSED_KEY = 'polo.lobby.collapsed'
+// Keep in sync with the media query in LobbyPanel.module.css: from here on the panel docks to the left.
+const DOCKED_QUERY = '(min-width: 960px)'
 
 export function LobbyPanel({
   clue,
@@ -36,13 +43,82 @@ export function LobbyPanel({
   onModeChange,
   onToggleMastery,
   onPlay,
+  onInsetChange,
 }: LobbyPanelProps) {
   const { t } = useI18n()
+  const panelRef = useRef<HTMLElement>(null)
+  const [collapsed, setCollapsed] = useState(() => readLocal(COLLAPSED_KEY) === '1')
   const [lastContinent, setLastContinent] = useState<ContinentId>('south-america')
   const regional = !isWorldwide(mode)
   const total = MODE_TOTALS[mode]
   const deck = records[clue] ?? {}
   const record = deck[mode]
+
+  // Tell the map how much of the screen the panel covers, so the globe centres in the free space.
+  // Measured on fold and on resize only: re-centring on every option change would make the globe twitch.
+  useLayoutEffect(() => {
+    const panel = panelRef.current
+    if (!panel) return
+    const docked = window.matchMedia(DOCKED_QUERY)
+    const measure = () => {
+      // Offsets, not the bounding box: the entry animation's translate must not leak into the inset.
+      // Only the full panel docks as a column; the folded bar always sits along the bottom edge.
+      onInsetChange(
+        docked.matches && !collapsed
+          ? { left: panel.offsetLeft + panel.offsetWidth, bottom: 0 }
+          : { left: 0, bottom: Math.max(0, window.innerHeight - panel.offsetTop) },
+      )
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [collapsed, onInsetChange])
+
+  const fold = (next: boolean) => {
+    setCollapsed(next)
+    writeLocal(COLLAPSED_KEY, next ? '1' : '0')
+  }
+
+  const playButton = (
+    <button type="button" className={`${ui.primary} ${styles.play}`} onClick={onPlay}>
+      <Icon name="play" />
+      {t.play}
+      <span className={`${ui.mono} ${styles.playCount}`}>{total}</span>
+    </button>
+  )
+
+  if (collapsed) {
+    return (
+      <section
+        key="compact"
+        ref={panelRef}
+        className={`${ui.panel} ${styles.panel} ${styles.compact}`}
+        aria-label={t.modeLabel}
+      >
+        <button
+          type="button"
+          className={styles.expand}
+          onClick={() => fold(false)}
+          aria-expanded={false}
+          aria-label={t.lobbyExpand}
+          title={t.lobbyExpand}
+        >
+          <span className={styles.foldIcon}>
+            <Icon name="chevronUp" />
+          </span>
+          <span className={styles.compactText}>
+            <span className={styles.compactRound}>{roundName(t, clue, mode)}</span>
+            {record && (
+              <span className={`${ui.mono} ${styles.compactBest}`}>
+                {record.best}/{total}
+              </span>
+            )}
+          </span>
+        </button>
+        {playButton}
+      </section>
+    )
+  }
 
   const selectContinent = (continent: ContinentId) => {
     setLastContinent(continent)
@@ -58,9 +134,21 @@ export function LobbyPanel({
       }))
 
   return (
-    <section className={`${ui.panel} ${styles.panel}`} aria-label={t.modeLabel}>
+    <section key="full" ref={panelRef} className={`${ui.panel} ${styles.panel}`} aria-label={t.modeLabel}>
       <div className={styles.game}>
-        <CluePicker value={clue} onChange={onClueChange} />
+        <div className={styles.top}>
+          <CluePicker value={clue} onChange={onClueChange} className={styles.clues} />
+          <button
+            type="button"
+            className={styles.collapse}
+            onClick={() => fold(true)}
+            aria-expanded
+            aria-label={t.lobbyCollapse}
+            title={t.lobbyCollapse}
+          >
+            <Icon name="chevronDown" />
+          </button>
+        </div>
         {/* Re-keyed so the line fades in again on every switch: the change of game is impossible to miss. */}
         <p key={clue} className={styles.clueNote}>
           {t.clues[clue].note}
@@ -130,11 +218,7 @@ export function LobbyPanel({
             <p className={styles.empty}>{t.noRecord}</p>
           )}
         </div>
-        <button type="button" className={`${ui.primary} ${styles.play}`} onClick={onPlay}>
-          <Icon name="play" />
-          {t.play}
-          <span className={`${ui.mono} ${styles.playCount}`}>{total}</span>
-        </button>
+        {playButton}
       </div>
 
       <div className={styles.mastery}>

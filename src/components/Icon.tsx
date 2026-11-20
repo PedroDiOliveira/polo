@@ -9,6 +9,8 @@ const ICONS = {
     filled: false,
   },
   flat: { d: 'm4 6.5 5-2 6 2 5-2v13l-5 2-6-2-5 2zM9 4.5v13M15 6.5v13', filled: false },
+  chevronDown: { d: 'm6 9 6 6 6-6', filled: false },
+  chevronUp: { d: 'm6 15 6-6 6 6', filled: false },
   back: { d: 'M19 12H5M11 6l-6 6 6 6', filled: false },
   capital: { d: 'M3 20h18M5 10v10M9.7 10v10M14.3 10v10M19 10v10M3 10h18l-9-6z', filled: false },
   pin: {

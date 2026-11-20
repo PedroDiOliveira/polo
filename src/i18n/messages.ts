@@ -21,6 +21,8 @@ export interface Messages {
   mapLoading: string
   mapError: string
   lobbyHint: string
+  lobbyCollapse: string
+  lobbyExpand: string
   clueLabel: string
   clues: Record<Clue, ClueMessages>
   modeLabel: string
@@ -75,6 +77,8 @@ const en: Messages = {
   mapLoading: 'Loading the world…',
   mapError: 'The map could not be loaded. Check that WebGL is enabled and reload the page.',
   lobbyHint: 'Zoom in on a country to reveal its capital.',
+  lobbyCollapse: 'Hide the panel and explore the map',
+  lobbyExpand: 'Show game options',
   clueLabel: 'Game',
   clues: {
     capital: {
@@ -169,6 +173,8 @@ const pt: Messages = {
   mapLoading: 'Carregando o mundo…',
   mapError: 'Não foi possível carregar o mapa. Verifique se o WebGL está ativo e recarregue a página.',
   lobbyHint: 'Aproxime-se de um país para revelar a capital.',
+  lobbyCollapse: 'Esconder o painel e explorar o mapa',
+  lobbyExpand: 'Mostrar opções de jogo',
   clueLabel: 'Jogo',
   clues: {
     capital: {

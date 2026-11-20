@@ -13,13 +13,14 @@ import { countPerfects } from './game/records'
 import { FEEDBACK_MS, useGame } from './hooks/useGame'
 import { useI18n } from './i18n/I18nContext'
 import type { MapFill } from './map/layers'
-import type { MapFocus, MapSignal } from './map/MapView'
+import type { MapFocus, MapInset, MapSignal } from './map/MapView'
 import { MAP_COLORS } from './map/theme'
 
 // The map engine is by far the heaviest dependency: load it in its own chunk so the shell paints first.
 const MapView = lazy(() => import('./map/MapView').then((module) => ({ default: module.MapView })))
 
 const NONE: readonly string[] = []
+const NO_INSET: MapInset = { left: 0, bottom: 0 }
 
 export function App() {
   const { locale } = useI18n()
@@ -29,6 +30,7 @@ export function App() {
   const [focus, setFocus] = useState<MapFocus>({ id: 0, bounds: null })
   const [recordsOpen, setRecordsOpen] = useState(false)
   const [showMastery, setShowMastery] = useState(false)
+  const [lobbyInset, setLobbyInset] = useState<MapInset>(NO_INSET)
 
   const playing = session.phase === 'playing'
   // Outside the lobby the round's own clue wins, even if the records dialog switched the lobby's choice meanwhile.
@@ -116,6 +118,8 @@ export function App() {
           hatched={wrong}
           signal={signal}
           focus={focus}
+          // Only the lobby panel keeps the globe off-centre; rounds use the whole screen as before.
+          inset={session.phase === 'lobby' ? lobbyInset : NO_INSET}
           tooltipFor={tooltipFor}
           onPick={handlePick}
         />
@@ -132,6 +136,7 @@ export function App() {
           onModeChange={setMode}
           onToggleMastery={() => setShowMastery((current) => !current)}
           onPlay={() => play(clue, mode)}
+          onInsetChange={setLobbyInset}
         />
       )}
       {session.phase === 'playing' && <GameHud session={session} onQuit={quit} />}
