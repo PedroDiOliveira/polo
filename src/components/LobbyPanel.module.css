@@ -1,13 +1,107 @@
 .panel {
   position: absolute;
-  left: 50%;
+  right: 0;
   bottom: var(--gutter);
-  translate: -50% 0;
+  left: 0;
   width: min(460px, calc(100% - 2 * var(--gutter)));
+  margin-inline: auto;
   display: grid;
   gap: 14px;
   padding: 14px;
   animation: rise 420ms var(--ease) both;
+}
+
+/* Wide screens: dock to the bottom-left corner and leave the middle of the screen to the globe.
+   Keep the breakpoint in sync with DOCKED_QUERY in LobbyPanel.tsx. */
+@media (min-width: 960px) {
+  .panel {
+    right: auto;
+    left: var(--gutter);
+    width: 400px;
+    max-height: calc(100dvh - 96px - var(--gutter));
+    margin-inline: 0;
+    overflow-y: auto;
+  }
+}
+
+.top {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.clues {
+  border-bottom: 0;
+}
+
+.collapse,
+.foldIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--text-dim);
+  transition:
+    background 160ms var(--ease),
+    color 160ms var(--ease);
+}
+
+.collapse:hover,
+.expand:hover .foldIcon {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 999px;
+}
+
+@media (min-width: 960px) {
+  .compact {
+    width: auto;
+    min-width: 340px;
+  }
+}
+
+.expand {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 48px;
+  padding-right: 8px;
+  border-radius: 999px;
+  text-align: left;
+}
+
+.compactText {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.compactRound {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compactBest {
+  flex: none;
+  color: var(--text-dim);
+  font-size: 13px;
 }
 
 .game {
@@ -244,6 +338,6 @@
 @keyframes rise {
   from {
     opacity: 0;
-    translate: -50% 16px;
+    translate: 0 16px;
   }
 }

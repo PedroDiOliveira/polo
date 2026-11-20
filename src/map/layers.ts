@@ -1,10 +1,5 @@
 import type { Feature, FeatureCollection, LineString, Point } from 'geojson'
-import type {
-  ExpressionSpecification,
-  FilterSpecification,
-  LayerSpecification,
-  StyleSpecification,
-} from 'maplibre-gl'
+import type { ExpressionSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
 import type { Country } from '../data/types'
 import { WORLD_GEOJSON_URL } from '../data/world'
 import { MAP_COLORS } from './theme'
@@ -21,31 +16,34 @@ export const LAYER = {
 } as const
 
 export const HATCH_IMAGE = 'hatch'
-export const NO_MATCH: FilterSpecification = ['==', ['get', 'code'], '']
+export const STATE_SOURCES = ['world', 'dots'] as const
+
+// What changes per country while playing (colour, hatch, hover, signal) is painted from feature-state.
+// A new filter or a new data-driven paint value makes MapLibre re-tile the whole source in its worker,
+// and that queue is what made continents arrive late while the globe was spinning.
+export type FeatureMark = 'fill' | 'hatch' | 'hover' | 'signal'
+
+const TRANSPARENT = 'rgba(0, 0, 0, 0)'
+
+// The colour stored in the mark, or the fallback when the feature has none.
+const markColor = (mark: FeatureMark, fallback: string): ExpressionSpecification => [
+  'to-color',
+  ['feature-state', mark],
+  fallback,
+]
+
+const markOpacity = (mark: FeatureMark, opacity: number): ExpressionSpecification => [
+  'case',
+  ['boolean', ['feature-state', mark], false],
+  opacity,
+  0,
+]
 
 const DOT_RADIUS: ExpressionSpecification = ['interpolate', ['linear'], ['zoom'], 1, 3, 4, 5.5, 7, 8]
-
-export function ownerFilter(owner: string): FilterSpecification {
-  return ['==', ['get', 'owner'], owner]
-}
-
-export function codeFilter(code: string): FilterSpecification {
-  return ['==', ['get', 'code'], code]
-}
-
-export function ownersFilter(owners: readonly string[]): FilterSpecification {
-  return owners.length > 0 ? ['in', ['get', 'owner'], ['literal', [...owners]]] : NO_MATCH
-}
 
 export interface MapFill {
   color: string
   codes: readonly string[]
-}
-
-export function fillColor(fills: readonly MapFill[]): ExpressionSpecification | string {
-  const branches = fills.filter((fill) => fill.codes.length > 0).flatMap((fill) => [[...fill.codes], fill.color])
-  if (branches.length === 0) return MAP_COLORS.land
-  return ['match', ['get', 'owner'], ...branches, MAP_COLORS.land] as unknown as ExpressionSpecification
 }
 
 function graticule(): FeatureCollection<LineString> {
@@ -84,8 +82,7 @@ export function hatchLayer(): LayerSpecification {
     id: LAYER.hatch,
     type: 'fill',
     source: 'world',
-    filter: NO_MATCH,
-    paint: { 'fill-pattern': HATCH_IMAGE, 'fill-opacity': 0.5 },
+    paint: { 'fill-pattern': HATCH_IMAGE, 'fill-opacity': markOpacity('hatch', 0.5) },
   }
 }
 
@@ -94,9 +91,16 @@ export function buildStyle(countries: readonly Country[]): StyleSpecification {
     version: 8,
     projection: { type: 'globe' },
     sources: {
-      world: { type: 'geojson', data: WORLD_GEOJSON_URL, tolerance: 0.25, buffer: 16, maxzoom: 9 },
+      world: {
+        type: 'geojson',
+        data: WORLD_GEOJSON_URL,
+        tolerance: 0.25,
+        buffer: 16,
+        maxzoom: 9,
+        promoteId: 'code',
+      },
       graticule: { type: 'geojson', data: graticule() },
-      dots: { type: 'geojson', data: dots(countries) },
+      dots: { type: 'geojson', data: dots(countries), promoteId: 'code' },
     },
     layers: [
       { id: 'ocean', type: 'background', paint: { 'background-color': MAP_COLORS.ocean } },
@@ -110,20 +114,19 @@ export function buildStyle(countries: readonly Country[]): StyleSpecification {
           'line-width': 0.8,
         },
       },
-      { id: LAYER.land, type: 'fill', source: 'world', paint: { 'fill-color': MAP_COLORS.land } },
+      { id: LAYER.land, type: 'fill', source: 'world', paint: { 'fill-color': markColor('fill', MAP_COLORS.land) } },
       {
         id: LAYER.hover,
         type: 'fill',
         source: 'world',
-        filter: NO_MATCH,
-        paint: { 'fill-color': MAP_COLORS.hover, 'fill-opacity': 0.2 },
+        paint: { 'fill-color': MAP_COLORS.hover, 'fill-opacity': markOpacity('hover', 0.2) },
       },
       {
+        // The colour comes from the mark; the opacity is a plain value the pulse animates without re-tiling.
         id: LAYER.signal,
         type: 'fill',
         source: 'world',
-        filter: NO_MATCH,
-        paint: { 'fill-color': MAP_COLORS.signal, 'fill-opacity': 0 },
+        paint: { 'fill-color': markColor('signal', TRANSPARENT), 'fill-opacity': 0 },
       },
       {
         id: LAYER.borders,
@@ -142,7 +145,7 @@ export function buildStyle(countries: readonly Country[]): StyleSpecification {
         source: 'dots',
         paint: {
           'circle-radius': DOT_RADIUS,
-          'circle-color': MAP_COLORS.land,
+          'circle-color': markColor('fill', MAP_COLORS.land),
           'circle-stroke-color': MAP_COLORS.border,
           'circle-stroke-width': 1.5,
         },
@@ -151,17 +154,15 @@ export function buildStyle(countries: readonly Country[]): StyleSpecification {
         id: LAYER.dotsHover,
         type: 'circle',
         source: 'dots',
-        filter: NO_MATCH,
-        paint: { 'circle-radius': DOT_RADIUS, 'circle-color': MAP_COLORS.hover, 'circle-opacity': 0.3 },
+        paint: { 'circle-radius': DOT_RADIUS, 'circle-color': MAP_COLORS.hover, 'circle-opacity': markOpacity('hover', 0.3) },
       },
       {
         id: LAYER.dotsSignal,
         type: 'circle',
         source: 'dots',
-        filter: NO_MATCH,
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 6, 4, 9, 6, 11],
-          'circle-color': MAP_COLORS.signal,
+          'circle-color': markColor('signal', TRANSPARENT),
           'circle-opacity': 0,
         },
       },

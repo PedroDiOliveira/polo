@@ -4,7 +4,7 @@ import type { Bounds, Locale } from '../data/types'
 import { useI18n } from '../i18n/I18nContext'
 import ui from '../styles/primitives.module.css'
 import type { MapFill } from './layers'
-import { MapController, type ProjectionName, type SignalKind } from './MapController'
+import { MapController, type MapInset, type ProjectionName, type SignalKind } from './MapController'
 import styles from './MapView.module.css'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -14,6 +14,8 @@ export interface MapSignal {
   label: string
   durationMs: number
 }
+
+export type { MapInset }
 
 export interface MapFocus {
   id: number
@@ -27,13 +29,14 @@ interface MapViewProps {
   hatched: readonly string[]
   signal: MapSignal | null
   focus: MapFocus
+  inset: MapInset
   tooltipFor: (code: string) => string | null
   onPick: (code: string) => void
 }
 
 type Status = 'loading' | 'ready' | 'error'
 
-export function MapView({ locale, showCapitals, fills, hatched, signal, focus, tooltipFor, onPick }: MapViewProps) {
+export function MapView({ locale, showCapitals, fills, hatched, signal, focus, inset, tooltipFor, onPick }: MapViewProps) {
   const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -83,6 +86,11 @@ export function MapView({ locale, showCapitals, fills, hatched, signal, focus, t
     if (signal) controller.signal(signal.code, signal.kind, signal.label, signal.durationMs)
     else controller.clearSignal()
   }, [signal])
+
+  // Declared before the focus effect: when both change together, the framing must win.
+  useEffect(() => {
+    controllerRef.current?.setInset({ left: inset.left, bottom: inset.bottom })
+  }, [inset.left, inset.bottom])
 
   useEffect(() => {
     if (focus.id > 0) controllerRef.current?.focus(focus.bounds)

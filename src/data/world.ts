@@ -14,6 +14,16 @@ export const WORLD_GEOJSON_URL = '/data/world.geojson'
 const countryByCode = new Map(COUNTRIES.map((country) => [country.code, country]))
 const territoryByCode = new Map(data.territories.map((territory) => [territory.code, territory]))
 
+// Every map feature a country answers for: itself plus its territories (France paints French Guiana too).
+const featuresByOwner = new Map(COUNTRIES.map((country) => [country.code, [country.code]]))
+for (const territory of data.territories) {
+  if (territory.owner) featuresByOwner.get(territory.owner)?.push(territory.code)
+}
+
+export function featuresOwnedBy(owner: string): readonly string[] {
+  return featuresByOwner.get(owner) ?? [owner]
+}
+
 export function getCountry(code: string): Country | undefined {
   return countryByCode.get(code)
 }

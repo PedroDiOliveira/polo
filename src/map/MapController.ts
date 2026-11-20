@@ -8,19 +8,16 @@ import {
 } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import type { Bounds, Country, Locale } from '../data/types'
-import { COUNTRIES, getCountry } from '../data/world'
+import { COUNTRIES, featuresOwnedBy, getCountry } from '../data/world'
 import { CapitalLabels } from './CapitalLabels'
 import {
   buildStyle,
-  codeFilter,
   createHatchImage,
   hatchLayer,
   HATCH_IMAGE,
   LAYER,
-  fillColor,
-  NO_MATCH,
-  ownerFilter,
-  ownersFilter,
+  STATE_SOURCES,
+  type FeatureMark,
   type MapFill,
 } from './layers'
 import { MAP_COLORS, MAP_VIEW } from './theme'
@@ -30,6 +27,12 @@ setWorkerUrl(workerUrl)
 
 export type ProjectionName = 'globe' | 'mercator'
 export type SignalKind = 'correct' | 'wrong'
+
+// Screen space covered by an overlay; the camera centres the world in what is left.
+export interface MapInset {
+  left: number
+  bottom: number
+}
 
 export interface MapCallbacks {
   onReady(): void
@@ -59,6 +62,8 @@ export class MapController {
   private signalFrame = 0
   private signalMarker: Marker | null = null
   private projection: ProjectionName = 'globe'
+  private inset: MapInset = { left: 0, bottom: 0 }
+  private readonly marks = new Map<FeatureMark, Map<string, string | boolean>>()
 
   constructor(
     container: HTMLElement,
@@ -113,10 +118,14 @@ export class MapController {
 
   setFills(fills: readonly MapFill[], hatched: readonly string[]): void {
     this.whenReady(() => {
-      const color = fillColor(fills)
-      this.map.setPaintProperty(LAYER.land, 'fill-color', color)
-      this.map.setPaintProperty(LAYER.dots, 'circle-color', color)
-      this.map.setFilter(LAYER.hatch, ownersFilter(hatched))
+      const colors = new Map<string, string>()
+      for (const { color, codes } of fills) {
+        for (const owner of codes) {
+          for (const id of featuresOwnedBy(owner)) if (!colors.has(id)) colors.set(id, color)
+        }
+      }
+      this.mark('fill', colors)
+      this.mark('hatch', ownedFeatures(hatched))
     })
   }
 
@@ -126,10 +135,7 @@ export class MapController {
     this.whenReady(() => {
       this.clearSignal()
       const color = kind === 'wrong' ? MAP_COLORS.signal : MAP_COLORS.flash
-      this.map.setFilter(LAYER.signal, ownerFilter(code))
-      this.map.setFilter(LAYER.dotsSignal, ownerFilter(code))
-      this.map.setPaintProperty(LAYER.signal, 'fill-color', color)
-      this.map.setPaintProperty(LAYER.dotsSignal, 'circle-color', color)
+      this.mark('signal', new Map(featuresOwnedBy(code).map((id) => [id, color])))
 
       if (kind === 'wrong') this.reveal(country)
       this.signalMarker = this.createSignalMarker(country, kind, label)
@@ -142,15 +148,27 @@ export class MapController {
     this.signalMarker?.remove()
     this.signalMarker = null
     if (!this.ready) return
-    this.map.setFilter(LAYER.signal, NO_MATCH)
-    this.map.setFilter(LAYER.dotsSignal, NO_MATCH)
+    this.mark('signal', new Map())
     this.setSignalOpacity(0)
+  }
+
+  setInset(inset: MapInset): void {
+    if (inset.left === this.inset.left && inset.bottom === this.inset.bottom) return
+    this.inset = inset
+    // Before the first frame there is nothing to animate: start already centred in the free space.
+    if (!this.ready) this.map.setPadding(this.padding())
+    else this.map.easeTo({ padding: this.padding(), duration: this.duration(600) })
   }
 
   focus(bounds: Bounds | null): void {
     this.whenReady(() => {
       if (!bounds) {
-        this.map.easeTo({ center: MAP_VIEW.center, zoom: MAP_VIEW.zoom, duration: this.duration(900) })
+        this.map.easeTo({
+          center: MAP_VIEW.center,
+          zoom: MAP_VIEW.zoom,
+          padding: this.padding(),
+          duration: this.duration(900),
+        })
         return
       }
       this.fit(bounds, 6)
@@ -172,6 +190,10 @@ export class MapController {
     else this.pending.push(task)
   }
 
+  private padding() {
+    return { top: 0, right: 0, left: this.inset.left, bottom: this.inset.bottom }
+  }
+
   private duration(ms: number): number {
     return this.reducedMotion ? 0 : ms
   }
@@ -187,13 +209,15 @@ export class MapController {
         [west, south],
         [east, north],
       ],
-      { padding: { top, bottom, left: side, right: side }, maxZoom },
+      // Absolute: the zoom must not shrink because the lobby panel's inset is still on the map when a round starts.
+      { padding: { top, bottom, left: side, right: side }, maxZoom, absolutePadding: true },
     )
     // Centre on the middle of the bounds ourselves: on the globe, the fitted centre drifts towards the pole.
     this.map.easeTo({
       center: [(west + east) / 2, (south + north) / 2],
       zoom: camera?.zoom ?? this.map.getZoom(),
       offset: [0, (top - bottom) / 2],
+      padding: this.padding(),
       duration: this.duration(900),
     })
   }
@@ -253,6 +277,21 @@ export class MapController {
     this.map.setPaintProperty(LAYER.dotsSignal, 'circle-opacity', opacity)
   }
 
+  // Applies one mark to exactly these features, touching only what changed since the last call.
+  // Ids are shared by both sources (a tiny country's dot carries its code), so each mark goes to both.
+  private mark(mark: FeatureMark, next: ReadonlyMap<string, string | boolean>): void {
+    const previous = this.marks.get(mark) ?? new Map<string, string | boolean>()
+    for (const id of previous.keys()) {
+      if (next.has(id)) continue
+      for (const source of STATE_SOURCES) this.map.removeFeatureState({ source, id }, mark)
+    }
+    for (const [id, value] of next) {
+      if (previous.get(id) === value) continue
+      for (const source of STATE_SOURCES) this.map.setFeatureState({ source, id }, { [mark]: value })
+    }
+    this.marks.set(mark, new Map(next))
+  }
+
   private hitTest(event: MapMouseEvent): Hit | null {
     if (!this.ready) return null
     const { x, y } = event.point
@@ -273,9 +312,8 @@ export class MapController {
     if (code === this.hovered) return
     this.hovered = code
     this.map.getCanvas().style.cursor = hit ? 'pointer' : ''
-    const filter = !hit ? NO_MATCH : hit.owner ? ownerFilter(hit.owner) : codeFilter(hit.code)
-    this.map.setFilter(LAYER.hover, filter)
-    this.map.setFilter(LAYER.dotsHover, filter)
+    // Unclaimed territories have an empty owner and light up alone.
+    this.mark('hover', !hit ? new Map() : hit.owner ? ownedFeatures([hit.owner]) : new Map([[hit.code, true]]))
     this.callbacks.onHover(code)
   }
 
@@ -298,4 +336,8 @@ export class MapController {
     this.setHover(hit)
     if (hit) this.callbacks.onPick(hit.code)
   }
+}
+
+function ownedFeatures(owners: readonly string[]): Map<string, boolean> {
+  return new Map(owners.flatMap((owner) => featuresOwnedBy(owner).map((id) => [id, true] as const)))
 }
