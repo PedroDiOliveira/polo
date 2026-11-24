@@ -11,7 +11,7 @@ export default async function middleware(request: Request): Promise<Response | u
   // Whatever goes wrong here, the page is served as usual: only the preview is lost, never the game.
   try {
     // Loaded lazily, so a failure in the preview code can never take the home page down with it.
-    const { imageQuery, parsePreview, withPreview } = await import('./src/share/preview')
+    const { imageQuery, parsePreview, withPreview } = await import('./src/share/preview.js')
     const preview = parsePreview(url.pathname, url.search)
     if (!preview) return undefined
 

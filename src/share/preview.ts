@@ -1,8 +1,8 @@
-import { CONTINENT_IDS, type Locale } from '../data/types'
+import { CONTINENT_IDS, type Locale } from '../data/types.js'
 import type { Clue, ModeId } from '../game/modes'
 import type { MedalTier } from '../game/records'
-import { MESSAGES, roundName } from '../i18n/messages'
-import { formatDuration } from '../lib/time'
+import { MESSAGES, roundName } from '../i18n/messages.js'
+import { formatDuration } from '../lib/time.js'
 
 // What a chat app shows for a shared link, worked out from the link alone.
 // This module runs on the edge too (middleware.ts, api/og.ts), so it must not pull in the map data:
