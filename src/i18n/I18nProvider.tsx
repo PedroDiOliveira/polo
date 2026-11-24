@@ -3,7 +3,9 @@ import type { Locale } from '../data/types'
 import { I18nContext, type I18n } from './I18nContext'
 import { MESSAGES } from './messages'
 
+// /pt/ is the Portuguese edition of the page; elsewhere the browser language decides.
 function detectLocale(): Locale {
+  if (location.pathname === '/pt' || location.pathname.startsWith('/pt/')) return 'pt'
   return navigator.language.toLowerCase().startsWith('pt') ? 'pt' : 'en'
 }
 

@@ -1,4 +1,6 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { interstitialBreak } from './ads/adPlacement'
+import { ChallengeCard } from './components/ChallengeCard'
 import { GameHud } from './components/GameHud'
 import { Header } from './components/Header'
 import { LobbyPanel } from './components/LobbyPanel'
@@ -8,13 +10,14 @@ import { describePlace, getCountry } from './data/world'
 import { CONTINENT_BOUNDS } from './game/camera'
 import type { Country } from './data/types'
 import { groupByLevel } from './game/mastery'
-import { DEFAULT_CLUE, GLOBAL_MODE, isWorldwide, type Clue, type ModeId } from './game/modes'
-import { countPerfects } from './game/records'
+import { DEFAULT_CLUE, GLOBAL_MODE, isClue, isModeId, isWorldwide, type Clue, type ModeId } from './game/modes'
+import { countMedals } from './game/records'
 import { FEEDBACK_MS, useGame } from './hooks/useGame'
 import { useI18n } from './i18n/I18nContext'
 import type { MapFill } from './map/layers'
 import type { MapFocus, MapInset, MapSignal } from './map/MapView'
 import { MAP_COLORS } from './map/theme'
+import { parseChallenge, type Challenge } from './share/challenge'
 
 // The map engine is by far the heaviest dependency: load it in its own chunk so the shell paints first.
 const MapView = lazy(() => import('./map/MapView').then((module) => ({ default: module.MapView })))
@@ -22,15 +25,36 @@ const MapView = lazy(() => import('./map/MapView').then((module) => ({ default: 
 const NONE: readonly string[] = []
 const NO_INSET: MapInset = { left: 0, bottom: 0 }
 
+// The content pages link straight to a game, such as /?mode=africa&clue=country.
+function linkedChoice(): { clue: Clue; mode: ModeId } {
+  const params = new URLSearchParams(location.search)
+  const clue = params.get('clue') ?? ''
+  const mode = params.get('mode') ?? ''
+  return { clue: isClue(clue) ? clue : DEFAULT_CLUE, mode: isModeId(mode) ? mode : GLOBAL_MODE }
+}
+
 export function App() {
   const { locale } = useI18n()
-  const { session, outcome, records, mastery, start, review, answer, quit, leave } = useGame()
-  const [clue, setClue] = useState<Clue>(DEFAULT_CLUE)
-  const [mode, setMode] = useState<ModeId>(GLOBAL_MODE)
+  const { session, outcome, records, mastery, watching, seed, start, review, answer, revive, decline, quit, leave } =
+    useGame()
+  // A friend's challenge link: offered once on arrival, then remembered while its round is played.
+  const [invite, setInvite] = useState<Challenge | null>(() => parseChallenge(location.search))
+  const [accepted, setAccepted] = useState<Challenge | null>(null)
+  const [clue, setClue] = useState<Clue>(() => linkedChoice().clue)
+  const [mode, setMode] = useState<ModeId>(() => linkedChoice().mode)
   const [focus, setFocus] = useState<MapFocus>({ id: 0, bounds: null })
   const [recordsOpen, setRecordsOpen] = useState(false)
   const [showMastery, setShowMastery] = useState(false)
   const [lobbyInset, setLobbyInset] = useState<MapInset>(NO_INSET)
+
+  // Drop the friend's score from the address bar, so a reload or a bookmark does not offer the challenge again.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (!params.has('seed')) return
+    for (const key of ['seed', 'score', 'time']) params.delete(key)
+    const query = params.toString()
+    history.replaceState(history.state, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`)
+  }, [])
 
   const playing = session.phase === 'playing'
   // Outside the lobby the round's own clue wins, even if the records dialog switched the lobby's choice meanwhile.
@@ -93,10 +117,20 @@ export function App() {
       bounds: isWorldwide(selected) ? null : CONTINENT_BOUNDS[selected],
     }))
 
-  const play = (selectedClue: Clue, selected: ModeId) => {
-    start(selectedClue, selected)
+  const play = (selectedClue: Clue, selected: ModeId, linkedSeed?: string) => {
+    start(selectedClue, selected, linkedSeed)
     frame(selected)
   }
+
+  const acceptChallenge = (challenge: Challenge) => {
+    setInvite(null)
+    setAccepted(challenge)
+    play(challenge.clue, challenge.mode, challenge.seed)
+  }
+
+  // The comparison only holds for the exact round the friend played; "play again" draws a new one.
+  const answered =
+    accepted && session.phase === 'finished' && !session.review && seed === accepted.seed ? accepted : null
 
   const startReview = () => {
     if (session.phase !== 'finished') return
@@ -106,7 +140,19 @@ export function App() {
 
   const locate = (country: Country) => setFocus((current) => ({ id: current.id + 1, bounds: country.bounds }))
 
-  const perfectCount = countPerfects(records)
+  const medals = countMedals(records)
+
+  // Every way out of the result screen is a natural break: that is where the interstitial may play,
+  // after the player has seen their score. Google decides whether one actually shows.
+  const breaking = useRef(false)
+  const afterBreak = (action: () => void) => {
+    if (breaking.current) return
+    breaking.current = true
+    void interstitialBreak('game_end').then(() => {
+      breaking.current = false
+      action()
+    })
+  }
 
   return (
     <main>
@@ -124,8 +170,15 @@ export function App() {
           onPick={handlePick}
         />
       </Suspense>
-      <Header perfectCount={perfectCount} onOpenRecords={() => setRecordsOpen(true)} />
-      {session.phase === 'lobby' && (
+      <Header medals={medals} onOpenRecords={() => setRecordsOpen(true)} />
+      {session.phase === 'lobby' && invite && (
+        <ChallengeCard
+          challenge={invite}
+          onAccept={() => acceptChallenge(invite)}
+          onDismiss={() => setInvite(null)}
+        />
+      )}
+      {session.phase === 'lobby' && !invite && (
         <LobbyPanel
           clue={clue}
           mode={mode}
@@ -139,14 +192,18 @@ export function App() {
           onInsetChange={setLobbyInset}
         />
       )}
-      {session.phase === 'playing' && <GameHud session={session} onQuit={quit} />}
+      {session.phase === 'playing' && (
+        <GameHud session={session} watching={watching} onWatch={revive} onDecline={decline} onQuit={quit} />
+      )}
       {session.phase === 'finished' && (
         <ResultPanel
           session={session}
           outcome={outcome}
-          onPlayAgain={() => play(session.clue, session.mode)}
-          onReview={startReview}
-          onLeave={leave}
+          seed={seed}
+          challenge={answered}
+          onPlayAgain={() => afterBreak(() => play(session.clue, session.mode))}
+          onReview={() => afterBreak(startReview)}
+          onLeave={() => afterBreak(leave)}
           onLocate={locate}
         />
       )}

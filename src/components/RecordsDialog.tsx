@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { MODE_IDS, MODE_TOTALS, type Clue } from '../game/modes'
-import type { Records } from '../game/records'
+import { medalFor, type Records } from '../game/records'
 import { useI18n } from '../i18n/I18nContext'
 import { modeName } from '../i18n/messages'
 import { formatDuration } from '../lib/time'
@@ -56,18 +56,24 @@ export function RecordsDialog({ open, records, clue, onClueChange, onClose }: Re
           {MODE_IDS.map((mode) => {
             const record = records[clue]?.[mode]
             const total = MODE_TOTALS[mode]
-            const perfect = record?.perfectMs !== undefined
+            const tier = medalFor(record)
             return (
               <li key={mode} className={styles.row}>
-                <PlanetMedal earned={perfect} size={34} label={perfect ? t.perfectBadge : undefined} />
+                <PlanetMedal
+                  tier={tier}
+                  size={34}
+                  label={tier === 'gold' ? t.medalGold : tier === 'silver' ? t.medalSilver : undefined}
+                />
                 <div className={styles.info}>
                   <p className={styles.mode}>{modeName(t, mode)}</p>
                   <p className={styles.detail}>
                     {record?.perfectMs !== undefined
                       ? t.perfectIn(formatDuration(record.perfectMs))
-                      : record
-                        ? t.clues[clue].count(total)
-                        : t.noRecord}
+                      : record?.assistedMs !== undefined
+                        ? t.assistedIn(formatDuration(record.assistedMs))
+                        : record
+                          ? t.clues[clue].count(total)
+                          : t.noRecord}
                   </p>
                   <div className={styles.bar} aria-hidden="true">
                     <span style={{ scale: `${(record?.best ?? 0) / total} 1` }} />

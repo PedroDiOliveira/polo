@@ -341,3 +341,24 @@
     translate: 0 16px;
   }
 }
+
+.pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  padding: 0 6px 2px;
+  font-size: 12px;
+}
+
+.pages a {
+  color: var(--text-dim);
+  text-decoration: none;
+  opacity: 0.8;
+}
+
+.pages a:hover,
+.pages a:focus-visible {
+  color: var(--text);
+  text-decoration: underline;
+  opacity: 1;
+}

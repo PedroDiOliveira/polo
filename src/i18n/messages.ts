@@ -1,5 +1,6 @@
 import type { ContinentId, Locale } from '../data/types'
 import type { Clue, ModeId } from '../game/modes'
+import type { Verdict } from '../share/challenge'
 
 // Everything that reads differently in the capital game and in the country game.
 export interface ClueMessages {
@@ -70,6 +71,34 @@ export interface Messages {
   masteryToggle: string
   masteryLevels: readonly [string, string, string, string]
   masteryCount: (count: number, total: number) => string
+  offerTitle: string
+  offerBody: (picked: string) => string
+  offerWatch: string
+  offerDecline: string
+  offerCountdown: (seconds: number) => string
+  adPlaying: string
+  extraLife: string
+  extraLifeUsed: string
+  resultPerfectAssisted: string
+  fastestAssisted: string
+  goldInvite: string
+  medalGold: string
+  medalSilver: string
+  assistedIn: (time: string) => string
+  share: string
+  shareCopied: string
+  shareFailed: string
+  shareDare: string
+  shareVerdict: (verdict: Verdict) => string
+  challengeTitle: string
+  challengeBody: (round: string, correct: number, total: number, time: string) => string
+  challengeAccept: string
+  challengeDismiss: string
+  challengeResult: (verdict: Verdict) => string
+  challengeYou: string
+  challengeFriend: string
+  challengeAgain: string
+  pages: { howTo: string; about: string; privacy: string; terms: string; contact: string; label: string }
 }
 
 const en: Messages = {
@@ -166,6 +195,48 @@ const en: Messages = {
   masteryToggle: 'Mastery map',
   masteryLevels: ['Learning', 'Familiar', 'Good', 'Mastered'],
   masteryCount: (count, total) => `${count} of ${total} mastered`,
+  offerTitle: 'Missed. Keep your perfect run?',
+  offerBody: (picked) => `You clicked ${picked}. Watch a short ad to try this question again. Once per game.`,
+  offerWatch: 'Watch ad and retry',
+  offerDecline: 'Show the answer',
+  offerCountdown: (seconds) => `Answer in ${seconds}s`,
+  adPlaying: 'Ad playing…',
+  extraLife: 'Extra life available in this game',
+  extraLifeUsed: 'Extra life used',
+  resultPerfectAssisted: 'Perfect, with help',
+  fastestAssisted: 'Fastest perfect run with help',
+  goldInvite: 'Do it without the extra life to earn the gold medal.',
+  medalGold: 'Gold medal: perfect without help',
+  medalSilver: 'Silver medal: perfect with the extra life',
+  assistedIn: (time) => `Perfect with help in ${time}`,
+  share: 'Challenge a friend',
+  shareCopied: 'Link copied. Paste it in any chat.',
+  shareFailed: 'Could not share from this browser.',
+  shareDare: 'Same questions. Can you beat me?',
+  shareVerdict: (verdict) =>
+    verdict === 'win'
+      ? 'I beat the challenge. Can you beat me?'
+      : verdict === 'tie'
+        ? 'I tied the challenge. Can you break it?'
+        : 'I lost the challenge. Can you do better?',
+  challengeTitle: 'You have been challenged',
+  challengeBody: (round, correct, total, time) =>
+    `A friend scored ${correct}/${total} in ${time} on ${round}. You get the same questions in the same order.`,
+  challengeAccept: 'Accept challenge',
+  challengeDismiss: 'Not now',
+  challengeResult: (verdict) =>
+    verdict === 'win' ? 'You won the challenge' : verdict === 'tie' ? 'A perfect tie' : 'Your friend wins this one',
+  challengeYou: 'You',
+  challengeFriend: 'Friend',
+  challengeAgain: 'Send it back',
+  pages: {
+    howTo: 'How to play',
+    about: 'About',
+    privacy: 'Privacy',
+    terms: 'Terms',
+    contact: 'Contact',
+    label: 'About Polo',
+  },
 }
 
 const pt: Messages = {
@@ -262,6 +333,49 @@ const pt: Messages = {
   masteryToggle: 'Mapa de domínio',
   masteryLevels: ['Aprendendo', 'Familiar', 'Bom', 'Dominado'],
   masteryCount: (count, total) => `${count} de ${total} dominados`,
+  offerTitle: 'Errou. Quer manter o gabarito?',
+  offerBody: (picked) =>
+    `Você clicou em ${picked}. Assista a um anúncio curto para tentar esta pergunta de novo. Uma vez por partida.`,
+  offerWatch: 'Assistir e tentar de novo',
+  offerDecline: 'Mostrar a resposta',
+  offerCountdown: (seconds) => `Resposta em ${seconds}s`,
+  adPlaying: 'Anúncio em exibição…',
+  extraLife: 'Vida extra disponível nesta partida',
+  extraLifeUsed: 'Vida extra usada',
+  resultPerfectAssisted: 'Gabarito com ajuda',
+  fastestAssisted: 'Gabarito com ajuda mais rápido',
+  goldInvite: 'Faça sem a vida extra para ganhar a medalha de ouro.',
+  medalGold: 'Medalha de ouro: gabarito sem ajuda',
+  medalSilver: 'Medalha de prata: gabarito com a vida extra',
+  assistedIn: (time) => `Gabarito com ajuda em ${time}`,
+  share: 'Desafiar um amigo',
+  shareCopied: 'Link copiado. Cole em qualquer conversa.',
+  shareFailed: 'Não foi possível compartilhar deste navegador.',
+  shareDare: 'Mesmas perguntas. Consegue me bater?',
+  shareVerdict: (verdict) =>
+    verdict === 'win'
+      ? 'Venci o desafio. Consegue me bater?'
+      : verdict === 'tie'
+        ? 'Empatei o desafio. Consegue desempatar?'
+        : 'Perdi o desafio. Consegue fazer melhor?',
+  challengeTitle: 'Você foi desafiado',
+  challengeBody: (round, correct, total, time) =>
+    `Um amigo fez ${correct}/${total} em ${time} em ${round}. Você recebe as mesmas perguntas, na mesma ordem.`,
+  challengeAccept: 'Aceitar desafio',
+  challengeDismiss: 'Agora não',
+  challengeResult: (verdict) =>
+    verdict === 'win' ? 'Você venceu o desafio' : verdict === 'tie' ? 'Empate perfeito' : 'Seu amigo levou essa',
+  challengeYou: 'Você',
+  challengeFriend: 'Amigo',
+  challengeAgain: 'Devolver o desafio',
+  pages: {
+    howTo: 'Como jogar',
+    about: 'Sobre',
+    privacy: 'Privacidade',
+    terms: 'Termos',
+    contact: 'Contato',
+    label: 'Sobre o Polo',
+  },
 }
 
 export const MESSAGES: Record<Locale, Messages> = { en, pt }

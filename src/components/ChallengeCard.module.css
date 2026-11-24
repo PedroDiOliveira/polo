@@ -1,0 +1,40 @@
+.panel {
+  position: absolute;
+  left: 50%;
+  bottom: var(--gutter);
+  translate: -50% 0;
+  width: min(460px, calc(100% - 2 * var(--gutter)));
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border-color: var(--accent);
+  animation: rise 420ms var(--ease) both;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.body {
+  color: var(--text-dim);
+  text-wrap: pretty;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions > * {
+  flex: 1 1 auto;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: -50% 16px;
+  }
+}

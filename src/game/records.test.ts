@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MODE_TOTALS } from './modes'
-import { applyResult, countPerfects, mergeRecords, parseRecords, serializeRecords, type Records } from './records'
+import { applyResult, countMedals, mergeRecords, parseRecords, serializeRecords, type Records } from './records'
 
 const total = MODE_TOTALS.oceania
 const capital = { clue: 'capital', mode: 'oceania' } as const
@@ -44,13 +44,35 @@ describe('applyResult', () => {
   })
 })
 
-describe('countPerfects', () => {
-  it('counts perfect runs across both games', () => {
+describe('medals', () => {
+  it('gives a silver medal to a perfect run that used the extra life', () => {
+    const outcome = applyResult({}, { ...capital, correct: total, elapsedMs: 50_000, assisted: true })
+    expect(outcome).toMatchObject({ isPerfect: true, isAssisted: true, isFastestPerfect: true })
+    expect(outcome.records.capital?.oceania).toEqual({ best: total, assistedMs: 50_000 })
+  })
+
+  it('keeps the gold and the silver times apart', () => {
+    const silver = applyResult({}, { ...capital, correct: total, elapsedMs: 50_000, assisted: true })
+    const gold = applyResult(silver.records, { ...capital, correct: total, elapsedMs: 80_000 })
+    expect(gold).toMatchObject({ isAssisted: false, isFastestPerfect: true })
+    expect(gold.records.capital?.oceania).toEqual({ best: total, perfectMs: 80_000, assistedMs: 50_000 })
+
+    const slowerSilver = applyResult(gold.records, { ...capital, correct: total, elapsedMs: 60_000, assisted: true })
+    expect(slowerSilver.records).toBe(gold.records)
+  })
+
+  it('does not treat an assisted run that is not perfect as a medal', () => {
+    const outcome = applyResult({}, { ...capital, correct: 3, elapsedMs: 1, assisted: true })
+    expect(outcome).toMatchObject({ isPerfect: false, isAssisted: false })
+    expect(outcome.records.capital?.oceania).toEqual({ best: 3 })
+  })
+
+  it('counts each mode once, at its best medal, across both games', () => {
     const records: Records = {
-      capital: { oceania: { best: total, perfectMs: 1 }, europe: { best: 3 } },
-      country: { oceania: { best: total, perfectMs: 2 } },
+      capital: { oceania: { best: total, perfectMs: 1, assistedMs: 1 }, europe: { best: 3 } },
+      country: { oceania: { best: total, perfectMs: 2 }, asia: { best: MODE_TOTALS.asia, assistedMs: 5 } },
     }
-    expect(countPerfects(records)).toBe(2)
+    expect(countMedals(records)).toEqual({ gold: 2, silver: 1 })
   })
 })
 
@@ -58,9 +80,19 @@ describe('records cookie codec', () => {
   it('round-trips records', () => {
     const records: Records = {
       capital: { global: { best: 120 }, oceania: { best: total, perfectMs: 45_000 } },
-      country: { europe: { best: 12 } },
+      country: {
+        europe: { best: 12 },
+        asia: { best: MODE_TOTALS.asia, assistedMs: 9_000 },
+        oceania: { best: total, perfectMs: 1_000, assistedMs: 900 },
+      },
     }
     expect(parseRecords(serializeRecords(records))).toEqual(records)
+  })
+
+  it('reads the older two-field format', () => {
+    expect(parseRecords(`{"capital":{"oceania":[${total},45000]}}`)).toEqual({
+      capital: { oceania: { best: total, perfectMs: 45_000 } },
+    })
   })
 
   it('reads records saved before the country game as capital records', () => {
@@ -77,6 +109,7 @@ describe('records cookie codec', () => {
 
   it('drops a perfect time that does not match a perfect score', () => {
     expect(parseRecords('{"country":{"oceania":[3,1000]}}')).toEqual({ country: { oceania: { best: 3 } } })
+    expect(parseRecords('{"country":{"oceania":[3,null,1000]}}')).toEqual({ country: { oceania: { best: 3 } } })
   })
 })
 

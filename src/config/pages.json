@@ -1,0 +1,9 @@
+{
+  "home": { "en": "/", "pt": "/pt/" },
+  "howTo": { "en": "/how-to-play", "pt": "/pt/como-jogar" },
+  "about": { "en": "/about", "pt": "/pt/sobre" },
+  "privacy": { "en": "/privacy", "pt": "/pt/privacidade" },
+  "terms": { "en": "/terms", "pt": "/pt/termos" },
+  "contact": { "en": "/contact", "pt": "/pt/contato" },
+  "continent": { "en": "/continents/", "pt": "/pt/continentes/" }
+}
