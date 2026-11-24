@@ -73,3 +73,66 @@ describe('sessionReducer', () => {
     })
   })
 })
+
+describe('extra life', () => {
+  const begin = (queue: string[]): Session =>
+    sessionReducer(INITIAL_SESSION, { type: 'start', clue: 'capital', mode: 'south-america', queue, now: 1_000 })
+  const missWithOffer = (session: Session, picked: string, at: number): Session =>
+    sessionReducer(session, { type: 'answer', picked, offerAt: at })
+
+  it('holds a miss as an offer without revealing the answer', () => {
+    const session = missWithOffer(begin(['BRA', 'ARG']), 'ARG', 2_000)
+    expect(session).toMatchObject({ offer: { picked: 'ARG', at: 2_000 }, feedback: null, wrong: [], index: 0 })
+  })
+
+  it('locks input while the offer is open', () => {
+    const session = missWithOffer(begin(['BRA', 'ARG']), 'ARG', 2_000)
+    expect(sessionReducer(session, { type: 'answer', picked: 'BRA' })).toBe(session)
+  })
+
+  it('lets the player retry the same question after reviving, and marks the game as assisted', () => {
+    let session = missWithOffer(begin(['BRA', 'ARG']), 'ARG', 2_000)
+    session = sessionReducer(session, { type: 'revive', now: 32_000 })
+    expect(session).toMatchObject({ offer: null, feedback: null, index: 0, reviveUsed: true, assisted: true, pausedMs: 30_000 })
+    session = sessionReducer(session, { type: 'answer', picked: 'BRA' })
+    expect(session).toMatchObject({ correct: ['BRA'], wrong: [] })
+  })
+
+  it('offers the extra life only once per game', () => {
+    let session = sessionReducer(missWithOffer(begin(['BRA', 'ARG']), 'ARG', 2_000), { type: 'revive', now: 3_000 })
+    session = missWithOffer(session, 'CHL', 4_000)
+    expect(session).toMatchObject({ offer: null, wrong: ['BRA'], feedback: { kind: 'wrong', target: 'BRA', picked: 'CHL' } })
+  })
+
+  it('falls back to a regular miss when the offer is declined', () => {
+    let session = missWithOffer(begin(['BRA', 'ARG']), 'ARG', 2_000)
+    session = sessionReducer(session, { type: 'decline', now: 5_000 })
+    expect(session).toMatchObject({
+      offer: null,
+      reviveUsed: false,
+      assisted: false,
+      pausedMs: 3_000,
+      wrong: ['BRA'],
+      feedback: { kind: 'wrong', target: 'BRA', picked: 'ARG' },
+    })
+  })
+
+  it('does not count the time the offer was open', () => {
+    let session = missWithOffer(begin(['BRA']), 'ARG', 2_000)
+    session = sessionReducer(session, { type: 'revive', now: 12_000 })
+    session = sessionReducer(sessionReducer(session, { type: 'answer', picked: 'BRA' }), { type: 'advance', now: 15_000 })
+    expect(session).toMatchObject({ phase: 'finished', elapsedMs: 4_000, assisted: true, correct: ['BRA'] })
+  })
+
+  it('never offers an extra life in the review round', () => {
+    const review = sessionReducer(INITIAL_SESSION, {
+      type: 'start',
+      clue: 'capital',
+      mode: 'south-america',
+      queue: ['BRA', 'ARG'],
+      now: 0,
+      review: true,
+    })
+    expect(missWithOffer(review, 'ARG', 1)).toMatchObject({ offer: null, feedback: { kind: 'wrong' } })
+  })
+})

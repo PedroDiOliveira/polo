@@ -150,3 +150,33 @@
     opacity: 0;
   }
 }
+
+.hud[data-feedback='offer'] {
+  border-color: var(--amber);
+}
+
+.hud[data-feedback='offer'] .status {
+  color: var(--amber);
+}
+
+.offer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px 14px;
+  animation: fade 240ms var(--ease) both;
+}
+
+.offer button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.life {
+  color: var(--amber);
+}
+
+.life[data-used='true'] {
+  color: var(--line-strong);
+}

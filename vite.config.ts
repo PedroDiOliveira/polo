@@ -42,7 +42,53 @@ function appMetadata(): Plugin {
   }
 }
 
+// Google's Ad Placement API (AdSense H5 Games Ads). Nothing is injected unless VITE_ADSENSE_CLIENT is set,
+// so local development and forks make no third-party request. Outside production the test flag is on:
+// Google then serves test ads, which keeps our own clicks from counting as invalid traffic.
+function adsense(): Plugin {
+  const client = process.env.VITE_ADSENSE_CLIENT?.trim()
+  if (client && !/^ca-pub-\d{10,20}$/.test(client)) {
+    throw new Error(`VITE_ADSENSE_CLIENT must look like ca-pub-0000000000000000, got "${client}"`)
+  }
+  const forcedTest = process.env.ADS_TEST === 'on' || process.env.VERCEL_ENV === 'preview'
+
+  return {
+    name: 'polo:adsense',
+    transformIndexHtml(_html, context) {
+      if (!client) return []
+      const test = forcedTest || context.server !== undefined
+      return [
+        {
+          tag: 'script',
+          attrs: {
+            async: true,
+            src: `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client}`,
+            crossorigin: 'anonymous',
+            'data-ad-frequency-hint': '60s',
+            ...(test ? { 'data-adbreak-test': 'on' } : {}),
+          },
+          injectTo: 'head',
+        },
+        {
+          tag: 'script',
+          children:
+            'window.adsbygoogle=window.adsbygoogle||[];window.adBreak=window.adConfig=function(o){window.adsbygoogle.push(o)};',
+          injectTo: 'head',
+        },
+      ]
+    },
+    generateBundle() {
+      if (!client) return
+      this.emitFile({
+        type: 'asset',
+        fileName: 'ads.txt',
+        source: `google.com, ${client.replace(/^ca-/, '')}, DIRECT, f08c47fec0942fa0\n`,
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), appMetadata()],
+  plugins: [react(), appMetadata(), adsense()],
   build: { target: 'es2022', chunkSizeWarningLimit: 1200 },
 })

@@ -61,9 +61,15 @@ Every capital in the pool is asked once. A miss does not end the game.
 
 **Optional review round.** The result screen lists what you missed, and each entry flies the map to that country. If there were misses, the game offers a review: only those capitals, on a clean map, each one coming back a few questions later until you get it right. It is an offer, never a gate, and it does not touch your score.
 
-**Mastery map.** A switch in the lobby colours every country by how well you know it, across all the games you have played. Each game keeps its own map, because knowing Paris and knowing where France is are different skills. Four levels, from "learning" to "mastered"; a correct first answer moves a country up one level and a miss moves it down.
+**Mastery map.** The lobby map always colours every country by how well you know it, for the game picked (Capitals or Countries), with its key fixed in the panel. Countries never asked stay plain, so a first visit sees a clean map. Each game keeps its own map, because knowing Paris and knowing where France is are different skills. Four levels, from "learning" to "mastered"; a correct first answer moves a country up one level and a miss moves it down.
 
-**Personal bests.** The best score is stored per game, per mode and per continent. A perfect run earns a planet medal and records the time it took; a faster perfect run replaces it.
+**A regional round switches the rest of the world off.** Neighbouring continents touch, and a beginner cannot tell where Europe ends and Asia begins. During a regional round every country outside it is drawn in a dim, desaturated green: still recognisable as land, but clearly out of play. It cannot be hovered or clicked, so a stray click costs nothing. Territories follow where they lie, not who owns them: Greenland is not part of a European round. The shared result card is drawn the same way. Dimming was chosen over marking the excluded countries (with a cross, for example) because a mark on a hundred countries is noise, and the hatch already means "missed".
+
+**Gold medals carry a mastery level.** Every perfect run without help adds one, shown on the medal. A medal can be shared as an image that explains what it means.
+
+**Personal bests and medals.** The best score is stored per game, per mode and per continent. A perfect run earns a planet medal and records the time it took; a faster perfect run replaces it. There are two tiers: **gold** for a perfect run without help, and a simpler **silver** for a perfect run that used the extra life. Gold always outranks silver, and each keeps its own fastest time.
+
+**Extra life (rewarded ad).** Once per regular game, after a wrong click, Polo may offer an extra life: watch a short ad and try the same question again. The offer appears *before* the answer is revealed, only when Google has an ad ready, and declines itself after 8 seconds. The time it is open does not count on the clock. A revived miss still counts as a miss on the mastery map.
 
 **Also included.** Globe and flat projections, English and Brazilian Portuguese (picked from the browser language), touch support, and reduced-motion support.
 
@@ -78,7 +84,7 @@ Every capital in the pool is asked once. A miss does not end the game.
 | **Natural Earth** | Public domain, maintained by cartographers, and it ships borders, sovereignty and capitals in one consistent dataset. |
 | **CSS Modules + custom properties** | Scoped styles with zero runtime cost. A design system of eight colours does not need a CSS framework. |
 | **Vitest** | Unit tests for the pure logic: the game reducer, the record rules and the cookie codec. |
-| **Vercel** | Static hosting with a CDN and Brotli. No server code is needed. |
+| **Vercel** | Static hosting with a CDN and Brotli. The only code that runs there draws the preview of a shared result link. |
 
 ### Choosing the map library
 
@@ -149,7 +155,18 @@ Only the survivors exist in the DOM, usually between 5 and 40 elements. Labels a
 
 ## Product decisions
 
+**Ads, and the one exception to "no third parties".** Polo is funded by Google's Ad Placement API (AdSense H5 Games Ads), wrapped in `src/ads/adPlacement.ts`. It is the only third-party request the app makes, and only when `VITE_ADSENSE_CLIENT` is set at build time. Two placements, both at natural breaks:
+
+- **Interstitial** (`next`, named `game_end`): after every second regular game, when the player leaves the result screen (play again, review or back to the lobby), so the score is always seen first. Google applies its own frequency cap on top (`data-ad-frequency-hint="60s"`).
+- **Rewarded** (`reward`, named `second_chance`): the extra life above. A rewarded ad must go through this API: rewarding views of a regular AdSense display unit breaks AdSense policy.
+
+There are no display ads over the map, so a click meant for a country can never land on an ad. The game works exactly as before when the script is missing or blocked: every call resolves on its own. Outside production the script runs with `data-adbreak-test="on"`, so testing never generates invalid traffic.
+
+**Static content pages.** `scripts/build-pages.mjs` runs after `vite build` and writes plain HTML pages (how to play, about, privacy, terms, contact and one page per continent, in English and Portuguese), the Portuguese entry of the game at `/pt/`, `sitemap.xml` and `robots.txt`. Country and capital names on those pages come from the game's own data, so they cannot disagree with it.
+
 **No backend.** Nothing in the product needs one. The data is static, the game is single-player and the only state worth keeping is a handful of numbers. Leaving the server out means no cold starts, no cost, no data to protect and no way for the game to be "down" short of the CDN itself.
+
+**One exception, and it keeps nothing: link previews.** A chat app reads a link's social tags before anyone taps it, and that preview decides whether a friend opens a challenge. A static page can only offer one generic image, so `middleware.ts` gives result links (`/?mode=…&seed=…&score=…` and `/?daily=…`) the same page with tags that describe the result, and `api/og.ts` draws the matching 1200×630 picture with `@vercel/og`. Both work from the link alone: no storage, no lookups, no logs of their own. If either fails, the page is served exactly as before and only the preview is lost.
 
 **Progress stays in the browser, and is built to survive.** Two things are stored, both first-party and both only on the player's device:
 
@@ -196,7 +213,7 @@ The full rationale is in [docs/BRAND.md](docs/BRAND.md). In short:
 
 ## Running locally
 
-Requires Node.js 20 or newer.
+Requires Node.js 20.10 or newer.
 
 ```bash
 npm install
@@ -206,7 +223,7 @@ npm run dev        # http://localhost:5173
 | Script | What it does |
 | --- | --- |
 | `npm run dev` | Development server |
-| `npm run build` | Type-check, then build to `dist/` |
+| `npm run build` | Type-check, build to `dist/`, then generate the static content pages |
 | `npm run preview` | Serve the production build |
 | `npm test` | Unit tests |
 | `npm run lint` | ESLint |
@@ -223,7 +240,14 @@ The project is a static site and deploys to Vercel with no configuration beyond 
 2. Import it in Vercel. The Vite preset is detected: build command `npm run build`, output directory `dist`.
 3. Deploy.
 
-`vercel.json` sets long-lived cache headers for the hashed assets and for the map data. The absolute URL for the social preview image is taken from Vercel's production domain at build time; set a `SITE_URL` environment variable to use a custom domain.
+`vercel.json` sets long-lived cache headers for the hashed assets and for the map data, and clean URLs for the content pages. The absolute URL for the social preview image is taken from Vercel's production domain at build time; set a `SITE_URL` environment variable to use a custom domain.
+
+| Variable | Purpose |
+| --- | --- |
+| `SITE_URL` | Custom domain, e.g. `https://polo.example`. Used in canonical links, Open Graph and the sitemap. AdSense requires a domain you own. |
+| `VITE_ADSENSE_CLIENT` | AdSense publisher id, `ca-pub-…`. Turns on the ad script and generates `ads.txt`. Leave unset for an ad-free build. |
+| `CONTACT_EMAIL` | Shown on the privacy, terms and contact pages. The build warns when it is missing. |
+| `ADS_TEST=on` | Forces Google's test ads in a production build. Preview deployments get them automatically. |
 
 Any other static host works too: run `npm run build` and serve `dist/`.
 
@@ -233,7 +257,6 @@ Any other static host works too: run `npm run build` and serve `dist/`.
 - **More question types.** Flags or country shapes, built on the same clue model as *Capitals* and *Countries*.
 - **Practice from the mastery map.** A game built from the countries currently at the lowest levels.
 - **A "no hints" option.** Hiding country names on hover, for players who want the harder recall.
-- **Shareable results.** A generated image of the final map, with no server involved.
 - **Offline play.** A service worker; the app already has no runtime dependencies on the network.
 - **End-to-end tests.** Playwright runs of a full game, alongside the existing unit tests.
 

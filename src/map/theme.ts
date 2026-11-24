@@ -11,6 +11,8 @@ export const MAP_COLORS = {
   signal: '#FFC53D',
   flash: '#FFFFFF',
   mastery: ['#E8C9A0', '#95D6B4', '#58C48F', '#1FAF6B'],
+  // Land outside a regional round: still land, but switched off, so the round's own countries stand out.
+  outside: '#3A5A4F',
 } as const
 
 export const MAP_VIEW = {

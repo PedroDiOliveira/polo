@@ -162,7 +162,14 @@ if (unresolved.length > 0) throw new Error(`No coordinates for capitals: ${unres
 
 const territories = world.features
   .filter((f) => !playable.has(f.properties.ADM0_A3))
-  .map((f) => ({ code: f.properties.ADM0_A3, owner: ownerOf(f.properties), name: names(f.properties) }))
+  // Where a territory lies, which may be far from its owner (Greenland, Guam): a regional round only lights up
+  // the territories inside its own continent. Open-ocean islands and Antarctica belong to none.
+  .map((f) => ({
+    code: f.properties.ADM0_A3,
+    owner: ownerOf(f.properties),
+    continent: CONTINENT_IDS[f.properties.CONTINENT] ?? null,
+    name: names(f.properties),
+  }))
 
 const geojson = {
   type: 'FeatureCollection',

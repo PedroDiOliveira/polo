@@ -1,8 +1,9 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { CONTINENT_IDS, type ContinentId } from '../data/types'
 import { masteredCount, type Mastery } from '../game/mastery'
 import { GLOBAL_MODE, isWorldwide, MODE_TOTALS, QUICK_MODE, type Clue, type ModeId } from '../game/modes'
-import type { Records } from '../game/records'
+import PAGES from '../config/pages.json'
+import { masteryOf, medalFor, type Records } from '../game/records'
 import { useI18n } from '../i18n/I18nContext'
 import { roundName } from '../i18n/messages'
 import { readLocal, writeLocal } from '../lib/storage'
@@ -20,15 +21,17 @@ interface LobbyPanelProps {
   mode: ModeId
   records: Records
   mastery: Mastery
-  showMastery: boolean
   onClueChange: (clue: Clue) => void
   onModeChange: (mode: ModeId) => void
-  onToggleMastery: () => void
   onPlay: () => void
   onInsetChange: (inset: MapInset) => void
+  // The daily Polo, shown first: it is the one game that changes every day.
+  daily: ReactNode
 }
 
 const WORLDWIDE_MODES = [GLOBAL_MODE, QUICK_MODE] as const
+// The static content pages, reachable from the game itself so readers and crawlers can find them.
+const PAGE_LINKS = ['howTo', 'about', 'privacy', 'terms', 'contact'] as const
 const COLLAPSED_KEY = 'polo.lobby.collapsed'
 // Keep in sync with the media query in LobbyPanel.module.css: from here on the panel docks to the left.
 const DOCKED_QUERY = '(min-width: 960px)'
@@ -38,14 +41,13 @@ export function LobbyPanel({
   mode,
   records,
   mastery,
-  showMastery,
   onClueChange,
   onModeChange,
-  onToggleMastery,
   onPlay,
   onInsetChange,
+  daily,
 }: LobbyPanelProps) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const panelRef = useRef<HTMLElement>(null)
   const [collapsed, setCollapsed] = useState(() => readLocal(COLLAPSED_KEY) === '1')
   const [lastContinent, setLastContinent] = useState<ContinentId>('south-america')
@@ -135,6 +137,7 @@ export function LobbyPanel({
 
   return (
     <section key="full" ref={panelRef} className={`${ui.panel} ${styles.panel}`} aria-label={t.modeLabel}>
+      {daily}
       <div className={styles.game}>
         <div className={styles.top}>
           <CluePicker value={clue} onChange={onClueChange} className={styles.clues} />
@@ -187,8 +190,12 @@ export function LobbyPanel({
             onClick={select}
           >
             <span>{label}</span>
-            {deck[id]?.perfectMs !== undefined ? (
-              <PlanetMedal earned size={18} label={t.perfectBadge} />
+            {medalFor(deck[id]) ? (
+              <PlanetMedal
+                tier={medalFor(deck[id])}
+                size={18}
+                label={medalFor(deck[id]) === 'gold' ? t.medalGold : t.medalSilver}
+              />
             ) : (
               <span className={`${ui.mono} ${styles.optionCount}`}>{MODE_TOTALS[id]}</span>
             )}
@@ -207,11 +214,18 @@ export function LobbyPanel({
                 {record.best}
                 <span className={styles.total}>/{total}</span>
               </span>
-              {record.perfectMs !== undefined && (
+              {record.perfectMs !== undefined ? (
                 <span className={styles.perfect}>
-                  <PlanetMedal earned size={20} />
-                  {t.perfectIn(formatDuration(record.perfectMs))}
+                  <PlanetMedal tier="gold" size={20} />
+                  {t.perfectIn(formatDuration(record.perfectMs))} · {t.mastery(masteryOf(record))}
                 </span>
+              ) : (
+                record.assistedMs !== undefined && (
+                  <span className={styles.perfect}>
+                    <PlanetMedal tier="silver" size={20} />
+                    {t.assistedIn(formatDuration(record.assistedMs))}
+                  </span>
+                )
               )}
             </p>
           ) : (
@@ -221,21 +235,17 @@ export function LobbyPanel({
         {playButton}
       </div>
 
+      {/* The map behind the panel is always the mastery map of the game picked; this is its key. */}
       <div className={styles.mastery}>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={showMastery}
-          className={styles.masteryToggle}
-          onClick={onToggleMastery}
-        >
-          <span className={styles.switch} aria-hidden="true" />
-          <span>{t.masteryToggle}</span>
+        <p className={styles.masteryHead}>
+          <span>{t.masteryTitle}</span>
           <span className={`${ui.mono} ${styles.masteryCount}`}>
             {t.masteryCount(masteredCount(mastery), MODE_TOTALS[GLOBAL_MODE])}
           </span>
-        </button>
-        {showMastery && (
+        </p>
+        {Object.keys(mastery).length === 0 ? (
+          <p className={styles.masteryEmpty}>{t.masteryEmpty}</p>
+        ) : (
           <ul className={styles.legend}>
             {t.masteryLevels.map((label, level) => (
               <li key={label}>
@@ -250,6 +260,14 @@ export function LobbyPanel({
       <p className={styles.hint}>
         {t.lobbyHint} <span className={styles.credit}>{t.dataCredit}</span>
       </p>
+
+      <nav className={styles.pages} aria-label={t.pages.label}>
+        {PAGE_LINKS.map((key) => (
+          <a key={key} href={PAGES[key][locale]}>
+            {t.pages[key]}
+          </a>
+        ))}
+      </nav>
     </section>
   )
 }

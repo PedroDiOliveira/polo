@@ -21,7 +21,7 @@ export const STATE_SOURCES = ['world', 'dots'] as const
 // What changes per country while playing (colour, hatch, hover, signal) is painted from feature-state.
 // A new filter or a new data-driven paint value makes MapLibre re-tile the whole source in its worker,
 // and that queue is what made continents arrive late while the globe was spinning.
-export type FeatureMark = 'fill' | 'hatch' | 'hover' | 'signal'
+export type FeatureMark = 'fill' | 'hatch' | 'hover' | 'signal' | 'outside'
 
 const TRANSPARENT = 'rgba(0, 0, 0, 0)'
 
@@ -37,6 +37,14 @@ const markOpacity = (mark: FeatureMark, opacity: number): ExpressionSpecificatio
   ['boolean', ['feature-state', mark], false],
   opacity,
   0,
+]
+
+// Land and dots take their mark's colour, unless the feature lies outside the round's region.
+const landColor: ExpressionSpecification = [
+  'case',
+  ['boolean', ['feature-state', 'outside'], false],
+  MAP_COLORS.outside,
+  markColor('fill', MAP_COLORS.land),
 ]
 
 const DOT_RADIUS: ExpressionSpecification = ['interpolate', ['linear'], ['zoom'], 1, 3, 4, 5.5, 7, 8]
@@ -114,7 +122,7 @@ export function buildStyle(countries: readonly Country[]): StyleSpecification {
           'line-width': 0.8,
         },
       },
-      { id: LAYER.land, type: 'fill', source: 'world', paint: { 'fill-color': markColor('fill', MAP_COLORS.land) } },
+      { id: LAYER.land, type: 'fill', source: 'world', paint: { 'fill-color': landColor } },
       {
         id: LAYER.hover,
         type: 'fill',
@@ -145,7 +153,7 @@ export function buildStyle(countries: readonly Country[]): StyleSpecification {
         source: 'dots',
         paint: {
           'circle-radius': DOT_RADIUS,
-          'circle-color': markColor('fill', MAP_COLORS.land),
+          'circle-color': landColor,
           'circle-stroke-color': MAP_COLORS.border,
           'circle-stroke-width': 1.5,
         },

@@ -1,20 +1,38 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { interstitialBreak } from './ads/adPlacement'
+import { DailyStrip } from './components/DailyStrip'
 import { GameHud } from './components/GameHud'
+import { InviteCard } from './components/InviteCard'
 import { Header } from './components/Header'
 import { LobbyPanel } from './components/LobbyPanel'
 import { RecordsDialog } from './components/RecordsDialog'
 import { ResultPanel } from './components/ResultPanel'
-import { describePlace, getCountry } from './data/world'
+import { describePlace, getCountry, regionFeatures } from './data/world'
 import { CONTINENT_BOUNDS } from './game/camera'
 import type { Country } from './data/types'
+import { dailyClue, dayNumber, streakOf } from './game/daily'
 import { groupByLevel } from './game/mastery'
-import { DEFAULT_CLUE, GLOBAL_MODE, isWorldwide, type Clue, type ModeId } from './game/modes'
-import { countPerfects } from './game/records'
+import {
+  DEFAULT_CLUE,
+  GLOBAL_MODE,
+  isClue,
+  isModeId,
+  isWorldwide,
+  MODE_TOTALS,
+  QUICK_MODE,
+  type Clue,
+  type ModeId,
+} from './game/modes'
+import { countMedals } from './game/records'
+import { useToday } from './hooks/useDaily'
 import { FEEDBACK_MS, useGame } from './hooks/useGame'
 import { useI18n } from './i18n/I18nContext'
+import { roundName } from './i18n/messages'
+import { formatDuration } from './lib/time'
 import type { MapFill } from './map/layers'
 import type { MapFocus, MapInset, MapSignal } from './map/MapView'
 import { MAP_COLORS } from './map/theme'
+import { isDailyLink, parseChallenge, type Challenge } from './share/challenge'
 
 // The map engine is by far the heaviest dependency: load it in its own chunk so the shell paints first.
 const MapView = lazy(() => import('./map/MapView').then((module) => ({ default: module.MapView })))
@@ -22,15 +40,40 @@ const MapView = lazy(() => import('./map/MapView').then((module) => ({ default: 
 const NONE: readonly string[] = []
 const NO_INSET: MapInset = { left: 0, bottom: 0 }
 
+// The content pages link straight to a game, such as /?mode=africa&clue=country.
+function linkedChoice(): { clue: Clue; mode: ModeId } {
+  const params = new URLSearchParams(location.search)
+  const clue = params.get('clue') ?? ''
+  const mode = params.get('mode') ?? ''
+  return { clue: isClue(clue) ? clue : DEFAULT_CLUE, mode: isModeId(mode) ? mode : GLOBAL_MODE }
+}
+
 export function App() {
-  const { locale } = useI18n()
-  const { session, outcome, records, mastery, start, review, answer, quit, leave } = useGame()
-  const [clue, setClue] = useState<Clue>(DEFAULT_CLUE)
-  const [mode, setMode] = useState<ModeId>(GLOBAL_MODE)
+  const { locale, t } = useI18n()
+  const game = useGame()
+  const { session, outcome, records, mastery, watching, seed, start, review, answer, revive, decline, quit, leave } =
+    game
+  const { dailyDay, dailyLog, startDaily } = game
+  const today = useToday()
+  // A friend's challenge link: offered once on arrival, then remembered while its round is played.
+  const [invite, setInvite] = useState<Challenge | null>(() => parseChallenge(location.search))
+  const [accepted, setAccepted] = useState<Challenge | null>(null)
+  // A shared daily link: offered on arrival, unless today's daily is already played.
+  const [dailyInvite, setDailyInvite] = useState(() => isDailyLink(location.search) && !dailyLog[today])
+  const [clue, setClue] = useState<Clue>(() => linkedChoice().clue)
+  const [mode, setMode] = useState<ModeId>(() => linkedChoice().mode)
   const [focus, setFocus] = useState<MapFocus>({ id: 0, bounds: null })
   const [recordsOpen, setRecordsOpen] = useState(false)
-  const [showMastery, setShowMastery] = useState(false)
   const [lobbyInset, setLobbyInset] = useState<MapInset>(NO_INSET)
+
+  // Drop the friend's score from the address bar, so a reload or a bookmark does not offer the challenge again.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (!['seed', 'daily', 'medal'].some((key) => params.has(key))) return
+    for (const key of ['seed', 'score', 'time', 'total', 'daily', 'medal', 'n']) params.delete(key)
+    const query = params.toString()
+    history.replaceState(history.state, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`)
+  }, [])
 
   const playing = session.phase === 'playing'
   // Outside the lobby the round's own clue wins, even if the records dialog switched the lobby's choice meanwhile.
@@ -45,15 +88,20 @@ export function App() {
     [allWrong, feedback],
   )
 
+  // A regional round switches off the rest of the world, so a beginner sees exactly which countries are in play.
+  const roundMode = session.phase === 'lobby' ? null : session.mode
+  const region = useMemo(() => (roundMode && !isWorldwide(roundMode) ? regionFeatures(roundMode) : null), [roundMode])
+
   const fills = useMemo<MapFill[]>(() => {
-    if (session.phase === 'lobby' && showMastery) {
+    // The lobby always shows what the player knows, for the game picked: the map is their progress.
+    if (session.phase === 'lobby') {
       return groupByLevel(mastery[clue]).map((codes, level) => ({ color: MAP_COLORS.mastery[level], codes }))
     }
     return [
       { color: MAP_COLORS.correct, codes: correct },
       { color: MAP_COLORS.wrong, codes: wrong },
     ]
-  }, [session.phase, showMastery, mastery, clue, correct, wrong])
+  }, [session.phase, mastery, clue, correct, wrong])
 
   const signal = useMemo<MapSignal | null>(() => {
     const target = feedback && getCountry(feedback.target)
@@ -93,10 +141,31 @@ export function App() {
       bounds: isWorldwide(selected) ? null : CONTINENT_BOUNDS[selected],
     }))
 
-  const play = (selectedClue: Clue, selected: ModeId) => {
-    start(selectedClue, selected)
+  const play = (selectedClue: Clue, selected: ModeId, linkedSeed?: string) => {
+    start(selectedClue, selected, linkedSeed)
     frame(selected)
   }
+
+  const acceptChallenge = (challenge: Challenge) => {
+    setInvite(null)
+    setAccepted(challenge)
+    play(challenge.clue, challenge.mode, challenge.seed)
+  }
+
+  // The comparison only holds for the exact round the friend played; "play again" draws a new one.
+  const answered =
+    accepted && session.phase === 'finished' && !session.review && seed === accepted.seed ? accepted : null
+
+  const playDaily = () => {
+    setDailyInvite(false)
+    startDaily(today)
+    frame(QUICK_MODE)
+  }
+
+  const todaysResult = dailyLog[today] ?? null
+  const finishedDaily = session.phase === 'finished' && !session.review && dailyDay ? dailyLog[dailyDay] : undefined
+  const dailyOutcome =
+    finishedDaily && dailyDay ? { day: dailyDay, result: finishedDaily, streak: streakOf(dailyLog, dailyDay) } : null
 
   const startReview = () => {
     if (session.phase !== 'finished') return
@@ -106,7 +175,19 @@ export function App() {
 
   const locate = (country: Country) => setFocus((current) => ({ id: current.id + 1, bounds: country.bounds }))
 
-  const perfectCount = countPerfects(records)
+  const medals = countMedals(records)
+
+  // Every way out of the result screen is a natural break: that is where the interstitial may play,
+  // after the player has seen their score. Google decides whether one actually shows.
+  const breaking = useRef(false)
+  const afterBreak = (action: () => void) => {
+    if (breaking.current) return
+    breaking.current = true
+    void interstitialBreak('game_end').then(() => {
+      breaking.current = false
+      action()
+    })
+  }
 
   return (
     <main>
@@ -115,6 +196,7 @@ export function App() {
           locale={locale}
           showCapitals={!playing}
           fills={fills}
+          region={region}
           hatched={wrong}
           signal={signal}
           focus={focus}
@@ -124,29 +206,60 @@ export function App() {
           onPick={handlePick}
         />
       </Suspense>
-      <Header perfectCount={perfectCount} onOpenRecords={() => setRecordsOpen(true)} />
-      {session.phase === 'lobby' && (
+      <Header medals={medals} onOpenRecords={() => setRecordsOpen(true)} />
+      {session.phase === 'lobby' && invite && (
+        <InviteCard
+          eyebrow={roundName(t, invite.clue, invite.mode)}
+          title={t.challengeTitle}
+          body={t.challengeBody(
+            roundName(t, invite.clue, invite.mode),
+            invite.correct,
+            MODE_TOTALS[invite.mode],
+            formatDuration(invite.elapsedMs),
+          )}
+          accept={t.challengeAccept}
+          dismiss={t.challengeDismiss}
+          onAccept={() => acceptChallenge(invite)}
+          onDismiss={() => setInvite(null)}
+        />
+      )}
+      {session.phase === 'lobby' && !invite && dailyInvite && (
+        <InviteCard
+          eyebrow={t.dailyRound(dayNumber(today), t.clues[dailyClue(today)].name)}
+          title={t.dailyInviteTitle}
+          body={t.dailyInviteBody(dailyClue(today))}
+          accept={t.dailyAccept}
+          dismiss={t.challengeDismiss}
+          onAccept={playDaily}
+          onDismiss={() => setDailyInvite(false)}
+        />
+      )}
+      {session.phase === 'lobby' && !invite && !dailyInvite && (
         <LobbyPanel
+          daily={<DailyStrip day={today} result={todaysResult} streak={streakOf(dailyLog, today)} onPlay={playDaily} />}
           clue={clue}
           mode={mode}
           records={records}
           mastery={mastery[clue]}
-          showMastery={showMastery}
           onClueChange={setClue}
           onModeChange={setMode}
-          onToggleMastery={() => setShowMastery((current) => !current)}
           onPlay={() => play(clue, mode)}
           onInsetChange={setLobbyInset}
         />
       )}
-      {session.phase === 'playing' && <GameHud session={session} onQuit={quit} />}
+      {session.phase === 'playing' && (
+        <GameHud session={session} watching={watching} onWatch={revive} onDecline={decline} onQuit={quit} />
+      )}
       {session.phase === 'finished' && (
         <ResultPanel
           session={session}
           outcome={outcome}
-          onPlayAgain={() => play(session.clue, session.mode)}
-          onReview={startReview}
-          onLeave={leave}
+          seed={seed}
+          challenge={answered}
+          daily={dailyOutcome}
+          onPlayAgain={() => afterBreak(() => play(session.clue, session.mode))}
+          onReview={() => afterBreak(startReview)}
+          onLeave={() => afterBreak(leave)}
           onLocate={locate}
         />
       )}

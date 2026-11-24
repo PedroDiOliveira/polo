@@ -21,5 +21,7 @@ export interface Country {
 export interface Territory {
   code: string
   owner: string | null
+  // Where it lies, which may be far from its owner; null for open-ocean islands and Antarctica.
+  continent: ContinentId | null
   name: Localized
 }

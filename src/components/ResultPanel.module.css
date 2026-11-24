@@ -180,3 +180,84 @@
     rotate: -40deg;
   }
 }
+
+.invite {
+  color: var(--text-dim);
+  font-size: 13px;
+  text-wrap: balance;
+}
+
+.share[data-proud='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.shareRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 20px;
+  margin-top: -8px;
+  font-size: 13px;
+}
+
+.shareStatus {
+  color: var(--text-dim);
+}
+
+.saveButton {
+  margin-left: auto;
+  color: var(--text-dim);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 160ms var(--ease);
+}
+
+.saveButton:hover {
+  color: var(--text);
+}
+
+.versus {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--line);
+}
+
+.versus[data-verdict='win'] {
+  border-color: var(--accent);
+  background: rgb(168 242 106 / 0.08);
+}
+
+.versusTitle {
+  font-weight: 600;
+}
+
+.versusScores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+
+.versusScores > div {
+  display: grid;
+  gap: 2px;
+}
+
+.versusScores dd {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.masteryLevel {
+  padding: 0 7px;
+  border-radius: 999px;
+  color: var(--pine-950);
+  background: var(--amber);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}

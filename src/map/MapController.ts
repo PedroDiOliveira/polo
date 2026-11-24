@@ -8,7 +8,7 @@ import {
 } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import type { Bounds, Country, Locale } from '../data/types'
-import { COUNTRIES, featuresOwnedBy, getCountry } from '../data/world'
+import { ALL_FEATURES, COUNTRIES, featuresOwnedBy, getCountry } from '../data/world'
 import { CapitalLabels } from './CapitalLabels'
 import {
   buildStyle,
@@ -64,6 +64,8 @@ export class MapController {
   private projection: ProjectionName = 'globe'
   private inset: MapInset = { left: 0, bottom: 0 }
   private readonly marks = new Map<FeatureMark, Map<string, string | boolean>>()
+  // Features outside the regional round being played: dimmed, and neither hovered nor clickable.
+  private outside = new Set<string>()
 
   constructor(
     container: HTMLElement,
@@ -126,6 +128,16 @@ export class MapController {
       }
       this.mark('fill', colors)
       this.mark('hatch', ownedFeatures(hatched))
+    })
+  }
+
+  // A regional round lights up its own features and switches the rest of the world off; null lights up everything.
+  setRegion(features: readonly string[] | null): void {
+    this.whenReady(() => {
+      const inside = features && new Set(features)
+      this.outside = new Set(inside ? ALL_FEATURES.filter((id) => !inside.has(id)) : [])
+      this.mark('outside', new Map([...this.outside].map((id) => [id, true])))
+      if (this.hovered && this.outside.has(this.hovered)) this.setHover(null)
     })
   }
 
@@ -304,6 +316,8 @@ export class MapController {
       this.map.queryRenderedFeatures(event.point, { layers: [LAYER.land] })[0]
     if (!feature) return null
     const { code, owner } = feature.properties as Hit
+    // Switched-off land is scenery: no hover, no tooltip and no answer, so a stray click costs nothing.
+    if (this.outside.has(code)) return null
     return { code, owner }
   }
 

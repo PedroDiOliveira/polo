@@ -26,6 +26,8 @@ interface MapViewProps {
   locale: Locale
   showCapitals: boolean
   fills: readonly MapFill[]
+  // The features of the regional round being played; null for the whole world.
+  region: readonly string[] | null
   hatched: readonly string[]
   signal: MapSignal | null
   focus: MapFocus
@@ -36,7 +38,18 @@ interface MapViewProps {
 
 type Status = 'loading' | 'ready' | 'error'
 
-export function MapView({ locale, showCapitals, fills, hatched, signal, focus, inset, tooltipFor, onPick }: MapViewProps) {
+export function MapView({
+  locale,
+  showCapitals,
+  fills,
+  region,
+  hatched,
+  signal,
+  focus,
+  inset,
+  tooltipFor,
+  onPick,
+}: MapViewProps) {
   const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -79,6 +92,10 @@ export function MapView({ locale, showCapitals, fills, hatched, signal, focus, i
   useEffect(() => {
     controllerRef.current?.setFills(fills, hatched)
   }, [fills, hatched])
+
+  useEffect(() => {
+    controllerRef.current?.setRegion(region)
+  }, [region])
 
   useEffect(() => {
     const controller = controllerRef.current
