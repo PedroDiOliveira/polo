@@ -1,9 +1,9 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { CONTINENT_IDS, type ContinentId } from '../data/types'
 import { masteredCount, type Mastery } from '../game/mastery'
 import { GLOBAL_MODE, isWorldwide, MODE_TOTALS, QUICK_MODE, type Clue, type ModeId } from '../game/modes'
 import PAGES from '../config/pages.json'
-import { medalFor, type Records } from '../game/records'
+import { masteryOf, medalFor, type Records } from '../game/records'
 import { useI18n } from '../i18n/I18nContext'
 import { roundName } from '../i18n/messages'
 import { readLocal, writeLocal } from '../lib/storage'
@@ -27,6 +27,8 @@ interface LobbyPanelProps {
   onToggleMastery: () => void
   onPlay: () => void
   onInsetChange: (inset: MapInset) => void
+  // The daily Polo, shown first: it is the one game that changes every day.
+  daily: ReactNode
 }
 
 const WORLDWIDE_MODES = [GLOBAL_MODE, QUICK_MODE] as const
@@ -47,6 +49,7 @@ export function LobbyPanel({
   onToggleMastery,
   onPlay,
   onInsetChange,
+  daily,
 }: LobbyPanelProps) {
   const { locale, t } = useI18n()
   const panelRef = useRef<HTMLElement>(null)
@@ -138,6 +141,7 @@ export function LobbyPanel({
 
   return (
     <section key="full" ref={panelRef} className={`${ui.panel} ${styles.panel}`} aria-label={t.modeLabel}>
+      {daily}
       <div className={styles.game}>
         <div className={styles.top}>
           <CluePicker value={clue} onChange={onClueChange} className={styles.clues} />
@@ -217,7 +221,7 @@ export function LobbyPanel({
               {record.perfectMs !== undefined ? (
                 <span className={styles.perfect}>
                   <PlanetMedal tier="gold" size={20} />
-                  {t.perfectIn(formatDuration(record.perfectMs))}
+                  {t.perfectIn(formatDuration(record.perfectMs))} · {t.mastery(masteryOf(record))}
                 </span>
               ) : (
                 record.assistedMs !== undefined && (

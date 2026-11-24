@@ -1,5 +1,6 @@
 import type { ContinentId, Locale } from '../data/types'
 import type { Clue, ModeId } from '../game/modes'
+import type { MedalTier } from '../game/records'
 import type { Verdict } from '../share/challenge'
 
 // Everything that reads differently in the capital game and in the country game.
@@ -88,6 +89,19 @@ export interface Messages {
   share: string
   shareCopied: string
   shareFailed: string
+  shareSave: string
+  shareSaved: string
+  medalGoldShort: string
+  medalSilverShort: string
+  // Mastery: the number of perfect runs without help, carried by the gold medal.
+  mastery: (level: number) => string
+  masteryRuns: (count: number) => string
+  medalMeaning: (tier: MedalTier, total: number) => string
+  medalDare: string
+  medalShare: string
+  medalOpen: (round: string) => string
+  bestTime: string
+  back: string
   shareDare: string
   shareVerdict: (verdict: Verdict) => string
   challengeTitle: string
@@ -98,6 +112,19 @@ export interface Messages {
   challengeYou: string
   challengeFriend: string
   challengeAgain: string
+  dailyTitle: string
+  dailyRound: (day: number, clue: string) => string
+  dailyNote: (clue: Clue) => string
+  dailyDone: (correct: number, total: number) => string
+  dailyStreak: (days: number) => string
+  dailyNext: (time: string) => string
+  dailyShare: string
+  dailyDare: string
+  // The link preview a chat app shows: the score up front, then the dare.
+  previewTitle: (correct: number, total: number, round: string) => string
+  dailyInviteTitle: string
+  dailyInviteBody: (clue: Clue) => string
+  dailyAccept: string
   pages: { howTo: string; about: string; privacy: string; terms: string; contact: string; label: string }
 }
 
@@ -212,6 +239,21 @@ const en: Messages = {
   share: 'Challenge a friend',
   shareCopied: 'Link copied. Paste it in any chat.',
   shareFailed: 'Could not share from this browser.',
+  shareSave: 'Save image',
+  shareSaved: 'Image saved.',
+  medalGoldShort: 'Gold medal',
+  medalSilverShort: 'Silver medal',
+  mastery: (level) => `Mastery ${level}`,
+  masteryRuns: (count) => (count === 1 ? '1 perfect run without help' : `${count} perfect runs without help`),
+  medalMeaning: (tier, total) =>
+    tier === 'gold'
+      ? `All ${total} right: not a single miss and no extra life.`
+      : `All ${total} right, with the help of the extra life.`,
+  medalDare: 'Can you earn yours?',
+  medalShare: 'Share medal',
+  medalOpen: (round) => `See the medal for ${round}`,
+  bestTime: 'Best time',
+  back: 'Back',
   shareDare: 'Same questions. Can you beat me?',
   shareVerdict: (verdict) =>
     verdict === 'win'
@@ -229,6 +271,19 @@ const en: Messages = {
   challengeYou: 'You',
   challengeFriend: 'Friend',
   challengeAgain: 'Send it back',
+  dailyTitle: 'Daily Polo',
+  dailyRound: (day, clue) => `Daily Polo #${day} · ${clue}`,
+  dailyNote: (clue) => `10 ${clue === 'capital' ? 'capitals' : 'countries'} from around the world. One try.`,
+  dailyDone: (correct, total) => `Today: ${correct}/${total}`,
+  dailyStreak: (days) => (days === 1 ? '1 day in a row' : `${days} days in a row`),
+  dailyNext: (time) => `Next in ${time}`,
+  dailyShare: 'Share result',
+  dailyDare: "Take on today's challenge. Can you beat me?",
+  previewTitle: (correct, total, round) => `${correct}/${total} · ${round}. Can you beat it?`,
+  dailyInviteTitle: "Today's Polo is waiting",
+  dailyInviteBody: (clue) =>
+    `10 ${clue === 'capital' ? 'capitals' : 'countries'} from around the world, one try. Play and compare with whoever sent you this.`,
+  dailyAccept: "Play today's Polo",
   pages: {
     howTo: 'How to play',
     about: 'About',
@@ -351,6 +406,21 @@ const pt: Messages = {
   share: 'Desafiar um amigo',
   shareCopied: 'Link copiado. Cole em qualquer conversa.',
   shareFailed: 'Não foi possível compartilhar deste navegador.',
+  shareSave: 'Salvar imagem',
+  shareSaved: 'Imagem salva.',
+  medalGoldShort: 'Medalha de ouro',
+  medalSilverShort: 'Medalha de prata',
+  mastery: (level) => `Maestria ${level}`,
+  masteryRuns: (count) => (count === 1 ? 'Gabaritou 1 vez sem ajuda' : `Gabaritou ${count} vezes sem ajuda`),
+  medalMeaning: (tier, total) =>
+    tier === 'gold'
+      ? `Acertou todas as ${total}: nenhum erro e sem usar a vida extra.`
+      : `Acertou todas as ${total}, com a ajuda da vida extra.`,
+  medalDare: 'Consegue ganhar a sua?',
+  medalShare: 'Compartilhar medalha',
+  medalOpen: (round) => `Ver a medalha de ${round}`,
+  bestTime: 'Melhor tempo',
+  back: 'Voltar',
   shareDare: 'Mesmas perguntas. Consegue me bater?',
   shareVerdict: (verdict) =>
     verdict === 'win'
@@ -368,6 +438,24 @@ const pt: Messages = {
   challengeYou: 'Você',
   challengeFriend: 'Amigo',
   challengeAgain: 'Devolver o desafio',
+  dailyTitle: 'Polo do dia',
+  dailyRound: (day, clue) => `Polo do dia #${day} · ${clue}`,
+  dailyNote: (clue) =>
+    clue === 'capital'
+      ? '10 capitais do mundo todo. Uma tentativa.'
+      : '10 países do mundo todo. Uma tentativa.',
+  dailyDone: (correct, total) => `Hoje: ${correct}/${total}`,
+  dailyStreak: (days) => (days === 1 ? '1 dia seguido' : `${days} dias seguidos`),
+  dailyNext: (time) => `Próximo em ${time}`,
+  dailyShare: 'Compartilhar resultado',
+  dailyDare: 'Encare o desafio de hoje. Consegue me bater?',
+  previewTitle: (correct, total, round) => `${correct}/${total} · ${round}. Consegue bater?`,
+  dailyInviteTitle: 'O Polo do dia está esperando',
+  dailyInviteBody: (clue) =>
+    clue === 'capital'
+      ? '10 capitais do mundo todo, uma tentativa. Jogue e compare com quem te mandou.'
+      : '10 países do mundo todo, uma tentativa. Jogue e compare com quem te mandou.',
+  dailyAccept: 'Jogar o Polo do dia',
   pages: {
     howTo: 'Como jogar',
     about: 'Sobre',

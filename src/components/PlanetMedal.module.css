@@ -37,3 +37,26 @@
 .locked .pole {
   fill: var(--line-strong);
 }
+
+.wrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-self: center;
+}
+
+.count {
+  position: absolute;
+  right: -0.45em;
+  bottom: -0.3em;
+  min-width: 1.7em;
+  padding: 0 0.4em;
+  border-radius: 999px;
+  color: var(--pine-950);
+  background: var(--amber);
+  box-shadow: 0 0 0 2px var(--pine-900);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  line-height: 1.6;
+  text-align: center;
+}

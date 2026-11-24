@@ -27,3 +27,13 @@ describe('share text', () => {
     expect(text).toBe('Polo 🌍 Capitals · Africa\n54/54 · ⏱ 03:12 🥇\nCan you beat me?')
   })
 })
+
+describe('daily share text', () => {
+  it('draws the grid from saved marks and shows a streak from two days on', async () => {
+    const { marksGrid } = await import('./shareText')
+    expect(marksGrid('HMU')).toBe('🟩🟥⬜')
+    const base = { round: 'Daily Polo #3 · Capitals', correct: 8, total: 10, time: '01:02', medal: null, grid: '', call: '' }
+    expect(shareText({ ...base, streak: 1 })).not.toContain('🔥')
+    expect(shareText({ ...base, streak: 4 })).toContain('8/10 · ⏱ 01:02 · 🔥 4')
+  })
+})

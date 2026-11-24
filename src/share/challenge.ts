@@ -20,6 +20,8 @@ export function challengeUrl(origin: string, locale: Locale, challenge: Challeng
     seed: challenge.seed,
     score: String(challenge.correct),
     time: String(Math.round(challenge.elapsedMs / 1000)),
+    // Only for the link preview, which runs without the map data and so cannot look the total up.
+    total: String(MODE_TOTALS[challenge.mode]),
   })
   return `${origin}${locale === 'pt' ? '/pt/' : '/'}?${params}`
 }
@@ -44,4 +46,14 @@ export function compare(mine: Pick<Challenge, 'correct' | 'elapsedMs'>, theirs: 
   const [a, b] = [Math.round(mine.elapsedMs / 1000), Math.round(theirs.elapsedMs / 1000)]
   if (a === b) return 'tie'
   return a < b ? 'win' : 'lose'
+}
+
+// Whoever opens a daily link gets that day's questions anyway; the day and score are only for the preview.
+export function dailyUrl(origin: string, locale: Locale, day: number, correct: number, total: number): string {
+  const params = new URLSearchParams({ daily: String(day), score: String(correct), total: String(total) })
+  return `${origin}${locale === 'pt' ? '/pt/' : '/'}?${params}`
+}
+
+export function isDailyLink(search: string): boolean {
+  return new URLSearchParams(search).has('daily')
 }

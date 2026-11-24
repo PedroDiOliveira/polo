@@ -6,15 +6,17 @@ interface PlanetMedalProps {
   tier: MedalTier | null
   size?: number
   label?: string
+  // The mastery level, shown as an amber pill on a gold medal. Left out where the medal is too small to carry it.
+  count?: number
 }
 
 // Shares the 23.5° axial tilt and the pole dot with the logo, so the reward reads as part of the same system.
 // Gold (perfect without help) is the full medal: a filled planet with a halo. Silver (perfect with the extra
 // life) keeps the same drawing in outline only, so both read as one family and gold is clearly the prize.
-export function PlanetMedal({ tier, size = 28, label }: PlanetMedalProps) {
+export function PlanetMedal({ tier, size = 28, label, count }: PlanetMedalProps) {
   const stroke = size < 28 ? 3.6 : 2.5
   const className = tier === 'gold' ? styles.gold : tier === 'silver' ? styles.silver : styles.locked
-  return (
+  const planet = (
     <svg
       className={className}
       width={size}
@@ -33,5 +35,14 @@ export function PlanetMedal({ tier, size = 28, label }: PlanetMedalProps) {
         <circle className={styles.pole} cx="24" cy="7" r="2.6" />
       </g>
     </svg>
+  )
+  if (tier !== 'gold' || !count) return planet
+  return (
+    <span className={styles.wrap}>
+      {planet}
+      <span className={styles.count} style={{ fontSize: Math.max(10, Math.round(size * 0.26)) }} aria-hidden="true">
+        {count}
+      </span>
+    </span>
   )
 }

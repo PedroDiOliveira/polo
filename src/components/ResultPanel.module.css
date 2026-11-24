@@ -192,15 +192,30 @@
   color: var(--accent);
 }
 
-.shareStatus {
+.shareRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 20px;
   margin-top: -8px;
-  color: var(--text-dim);
   font-size: 13px;
-  text-align: center;
 }
 
-.shareStatus:empty {
-  display: none;
+.shareStatus {
+  color: var(--text-dim);
+}
+
+.saveButton {
+  margin-left: auto;
+  color: var(--text-dim);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 160ms var(--ease);
+}
+
+.saveButton:hover {
+  color: var(--text);
 }
 
 .versus {
@@ -236,4 +251,13 @@
   margin: 0;
   font-size: 16px;
   font-weight: 500;
+}
+
+.masteryLevel {
+  padding: 0 7px;
+  border-radius: 999px;
+  color: var(--pine-950);
+  background: var(--amber);
+  font-family: var(--font-mono);
+  font-weight: 700;
 }

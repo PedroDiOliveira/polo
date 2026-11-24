@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { ADS, countFinishedGame, initAds, requestReward, type Reward } from '../ads/adPlacement'
-import { MODE_TOTALS, poolFor, type Clue, type ModeId } from '../game/modes'
+import { dailyClue, dailyMarks, dailyQueue, type DailyLog, type DayKey } from '../game/daily'
+import { MODE_TOTALS, poolFor, QUICK_MODE, type Clue, type ModeId } from '../game/modes'
 import type { RecordOutcome, Records } from '../game/records'
 import {
   canOfferRevive,
@@ -13,6 +14,7 @@ import {
 import { newSeed, seededRandom } from '../lib/seededRandom'
 import { shuffle } from '../lib/shuffle'
 import { requestPersistence } from '../lib/storage'
+import { useDaily } from './useDaily'
 import { useMastery, type MasteryByClue } from './useMastery'
 import { useRecords } from './useRecords'
 
@@ -28,7 +30,11 @@ export interface Game {
   // What drew the current regular round's questions: shared in a challenge link so a friend gets the same ones.
   // Null for a review round, which replays the player's own misses.
   seed: string | null
+  // The day of the daily Polo being played or just finished; null for every other round.
+  dailyDay: DayKey | null
+  dailyLog: DailyLog
   start: (clue: Clue, mode: ModeId, seed?: string) => void
+  startDaily: (day: DayKey) => void
   review: () => void
   answer: (code: string) => void
   revive: () => void
@@ -42,8 +48,12 @@ export function useGame(): Game {
   const [outcome, setOutcome] = useState<RecordOutcome | null>(null)
   const [watching, setWatching] = useState(false)
   const [seed, setSeed] = useState<string | null>(null)
+  const [dailyDay, setDailyDay] = useState<DayKey | null>(null)
   const { records, submit } = useRecords()
   const { mastery, record: recordMastery } = useMastery()
+  const { log: dailyLog, record: recordDaily } = useDaily()
+  // Read when the round finishes, which may be after midnight: the game counts for the day it started.
+  const dailyRound = useRef<DayKey | null>(null)
 
   // Ad lookups are asynchronous, so the latest session is also kept in a ref for code that resumes after them.
   const current = useRef<Session>(INITIAL_SESSION)
@@ -70,7 +80,28 @@ export function useGame(): Game {
       if (action.type === 'revive' && next.phase === 'playing') revivedIndex.current = next.index
       if (action.type === 'start') revivedIndex.current = null
 
-      if (next.phase === 'finished' && !next.review) {
+      if (next.phase === 'finished' && !next.review && dailyRound.current) {
+        // The daily keeps its own log: ten questions must not count as a personal best of a twenty-question mode.
+        const correct = next.correct.length
+        const isPerfect = correct === next.total
+        recordDaily(dailyRound.current, {
+          clue: next.clue,
+          correct,
+          total: next.total,
+          elapsedMs: next.elapsedMs,
+          assisted: next.assisted,
+          marks: dailyMarks(next.queue, next.correct, next.wrong),
+        })
+        setOutcome({
+          records,
+          isNewBest: false,
+          isPerfect,
+          isAssisted: isPerfect && next.assisted,
+          isFastestPerfect: false,
+        })
+        countFinishedGame()
+        requestPersistence()
+      } else if (next.phase === 'finished' && !next.review) {
         setOutcome(
           submit({
             clue: next.clue,
@@ -89,7 +120,7 @@ export function useGame(): Game {
       current.current = next
       setSession(next)
     },
-    [submit, recordMastery],
+    [submit, recordMastery, recordDaily, records],
   )
 
   const advance = useEffectEvent(() => apply({ type: 'advance', now: Date.now() }))
@@ -144,11 +175,23 @@ export function useGame(): Game {
     mastery,
     watching,
     seed,
+    dailyDay,
+    dailyLog,
+    startDaily: (day) => {
+      if (dailyLog[day]) return
+      dailyRound.current = day
+      setDailyDay(day)
+      setSeed(null)
+      // The quick mode's framing (the whole world); the daily's own queue replaces its draw.
+      apply({ type: 'start', clue: dailyClue(day), mode: QUICK_MODE, queue: dailyQueue(day), now: Date.now() })
+    },
     start: (clue, mode, linked) => {
       const drawn = linked ?? newSeed()
       const queue = shuffle(poolFor(mode), seededRandom(drawn))
         .slice(0, MODE_TOTALS[mode])
         .map((country) => country.code)
+      dailyRound.current = null
+      setDailyDay(null)
       setSeed(drawn)
       apply({ type: 'start', clue, mode, queue, now: Date.now() })
     },
@@ -156,6 +199,8 @@ export function useGame(): Game {
       const finished = current.current
       if (finished.phase !== 'finished') return
       setSeed(null)
+      dailyRound.current = null
+      setDailyDay(null)
       apply({
         type: 'start',
         clue: finished.clue,

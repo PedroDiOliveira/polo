@@ -108,3 +108,15 @@
     translate: 0 12px;
   }
 }
+
+.open {
+  width: 36px;
+  height: 36px;
+  margin-left: -6px;
+  color: var(--accent);
+}
+
+.openSpacer {
+  width: 30px;
+  flex: none;
+}

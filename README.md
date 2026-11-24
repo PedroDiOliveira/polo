@@ -80,7 +80,7 @@ Every capital in the pool is asked once. A miss does not end the game.
 | **Natural Earth** | Public domain, maintained by cartographers, and it ships borders, sovereignty and capitals in one consistent dataset. |
 | **CSS Modules + custom properties** | Scoped styles with zero runtime cost. A design system of eight colours does not need a CSS framework. |
 | **Vitest** | Unit tests for the pure logic: the game reducer, the record rules and the cookie codec. |
-| **Vercel** | Static hosting with a CDN and Brotli. No server code is needed. |
+| **Vercel** | Static hosting with a CDN and Brotli. The only code that runs there draws the preview of a shared result link. |
 
 ### Choosing the map library
 
@@ -161,6 +161,8 @@ There are no display ads over the map, so a click meant for a country can never 
 **Static content pages.** `scripts/build-pages.mjs` runs after `vite build` and writes plain HTML pages (how to play, about, privacy, terms, contact and one page per continent, in English and Portuguese), the Portuguese entry of the game at `/pt/`, `sitemap.xml` and `robots.txt`. Country and capital names on those pages come from the game's own data, so they cannot disagree with it.
 
 **No backend.** Nothing in the product needs one. The data is static, the game is single-player and the only state worth keeping is a handful of numbers. Leaving the server out means no cold starts, no cost, no data to protect and no way for the game to be "down" short of the CDN itself.
+
+**One exception, and it keeps nothing: link previews.** A chat app reads a link's social tags before anyone taps it, and that preview decides whether a friend opens a challenge. A static page can only offer one generic image, so `middleware.ts` gives result links (`/?mode=…&seed=…&score=…` and `/?daily=…`) the same page with tags that describe the result, and `api/og.ts` draws the matching 1200×630 picture with `@vercel/og`. Both work from the link alone: no storage, no lookups, no logs of their own. If either fails, the page is served exactly as before and only the preview is lost.
 
 **Progress stays in the browser, and is built to survive.** Two things are stored, both first-party and both only on the player's device:
 
@@ -251,7 +253,6 @@ Any other static host works too: run `npm run build` and serve `dist/`.
 - **More question types.** Flags or country shapes, built on the same clue model as *Capitals* and *Countries*.
 - **Practice from the mastery map.** A game built from the countries currently at the lowest levels.
 - **A "no hints" option.** Hiding country names on hover, for players who want the harder recall.
-- **Shareable results.** A generated image of the final map, with no server involved.
 - **Offline play.** A service worker; the app already has no runtime dependencies on the network.
 - **End-to-end tests.** Playwright runs of a full game, alongside the existing unit tests.
 
