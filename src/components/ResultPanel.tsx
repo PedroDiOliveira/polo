@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getCountry } from '../data/world'
+import { getCountry, regionFeatures } from '../data/world'
 import type { Country } from '../data/types'
 import { CONTINENT_BOUNDS } from '../game/camera'
 import { dayNumber, type DailyResult, type DayKey } from '../game/daily'
@@ -110,6 +110,7 @@ export function ResultPanel({
         hits: session.correct,
         misses: session.wrong,
         bounds: isWorldwide(session.mode) ? null : CONTINENT_BOUNDS[session.mode],
+        region: isWorldwide(session.mode) ? null : regionFeatures(session.mode),
         versus,
         call,
         host: location.host,

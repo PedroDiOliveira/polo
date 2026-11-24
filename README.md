@@ -61,7 +61,11 @@ Every capital in the pool is asked once. A miss does not end the game.
 
 **Optional review round.** The result screen lists what you missed, and each entry flies the map to that country. If there were misses, the game offers a review: only those capitals, on a clean map, each one coming back a few questions later until you get it right. It is an offer, never a gate, and it does not touch your score.
 
-**Mastery map.** A switch in the lobby colours every country by how well you know it, across all the games you have played. Each game keeps its own map, because knowing Paris and knowing where France is are different skills. Four levels, from "learning" to "mastered"; a correct first answer moves a country up one level and a miss moves it down.
+**Mastery map.** The lobby map always colours every country by how well you know it, for the game picked (Capitals or Countries), with its key fixed in the panel. Countries never asked stay plain, so a first visit sees a clean map. Each game keeps its own map, because knowing Paris and knowing where France is are different skills. Four levels, from "learning" to "mastered"; a correct first answer moves a country up one level and a miss moves it down.
+
+**A regional round switches the rest of the world off.** Neighbouring continents touch, and a beginner cannot tell where Europe ends and Asia begins. During a regional round every country outside it is drawn in a dim, desaturated green: still recognisable as land, but clearly out of play. It cannot be hovered or clicked, so a stray click costs nothing. Territories follow where they lie, not who owns them: Greenland is not part of a European round. The shared result card is drawn the same way. Dimming was chosen over marking the excluded countries (with a cross, for example) because a mark on a hundred countries is noise, and the hatch already means "missed".
+
+**Gold medals carry a mastery level.** Every perfect run without help adds one, shown on the medal. A medal can be shared as an image that explains what it means.
 
 **Personal bests and medals.** The best score is stored per game, per mode and per continent. A perfect run earns a planet medal and records the time it took; a faster perfect run replaces it. There are two tiers: **gold** for a perfect run without help, and a simpler **silver** for a perfect run that used the extra life. Gold always outranks silver, and each keeps its own fastest time.
 

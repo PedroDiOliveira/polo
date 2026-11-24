@@ -20,6 +20,8 @@ export interface ResultCard {
   misses: readonly string[]
   // The region to frame; null shows the whole world.
   bounds: Bounds | null
+  // The features of a regional round; the rest of the world is drawn switched off, as on the map.
+  region: readonly string[] | null
   // "You 41/54 · 03:12   Friend 40/54 · 03:30", when the round answered a challenge.
   versus: { label: string; you: string; friend: string; won: boolean } | null
   call: string
@@ -64,10 +66,7 @@ function loadWorld(): Promise<World> {
 }
 
 export async function drawResultCard(card: ResultCard): Promise<Blob> {
-  const [geometry] = await Promise.all([
-    loadWorld(),
-    loadBrandFonts(),
-  ])
+  const [geometry] = await Promise.all([loadWorld(), loadBrandFonts()])
   const box: Box = { x: MARGIN, y: MAP_TOP, w: MAP_WIDTH, h: card.bounds ? REGION_MAP_HEIGHT : WORLD_MAP_HEIGHT }
   const height = box.y + box.h + SUMMARY_HEIGHT
   const canvas = document.createElement('canvas')
@@ -105,16 +104,23 @@ function drawMap(ctx: CanvasRenderingContext2D, geometry: World, card: ResultCar
   const dotRadius = Math.min(7, Math.max(3.5, scale * 0.8))
   const hits = new Set(card.hits)
   const misses = new Set(card.misses)
+  const region = card.region && new Set(card.region)
   const hatch = hatchPattern(ctx)
-  const colorOf = (owner: string | null) =>
-    owner && hits.has(owner) ? MAP_COLORS.correct : owner && misses.has(owner) ? MAP_COLORS.wrong : MAP_COLORS.land
+  const colorOf = (code: string, owner: string | null) =>
+    region && !region.has(code)
+      ? MAP_COLORS.outside
+      : owner && hits.has(owner)
+        ? MAP_COLORS.correct
+        : owner && misses.has(owner)
+          ? MAP_COLORS.wrong
+          : MAP_COLORS.land
 
   ctx.lineJoin = 'round'
   for (const feature of geometry.features) {
     if (LEFT_OUT.has(feature.properties.code)) continue
     const owner = feature.properties.owner
     const path = shapePath(feature.geometry, project)
-    ctx.fillStyle = colorOf(owner)
+    ctx.fillStyle = colorOf(feature.properties.code, owner)
     ctx.fill(path, 'evenodd')
     // Misses keep their hatch here too: colour is never the only signal (see docs/BRAND.md).
     if (owner && misses.has(owner) && hatch) {
@@ -133,7 +139,7 @@ function drawMap(ctx: CanvasRenderingContext2D, geometry: World, card: ResultCar
     if (x < box.x || x > box.x + box.w || y < box.y || y > box.y + box.h) continue
     ctx.beginPath()
     ctx.arc(x, y, dotRadius, 0, Math.PI * 2)
-    ctx.fillStyle = colorOf(country.code)
+    ctx.fillStyle = colorOf(country.code, country.code)
     ctx.fill()
     ctx.strokeStyle = MAP_COLORS.border
     ctx.lineWidth = dotRadius > 5 ? 2 : 1.2

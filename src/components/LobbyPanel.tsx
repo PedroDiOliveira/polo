@@ -21,10 +21,8 @@ interface LobbyPanelProps {
   mode: ModeId
   records: Records
   mastery: Mastery
-  showMastery: boolean
   onClueChange: (clue: Clue) => void
   onModeChange: (mode: ModeId) => void
-  onToggleMastery: () => void
   onPlay: () => void
   onInsetChange: (inset: MapInset) => void
   // The daily Polo, shown first: it is the one game that changes every day.
@@ -43,10 +41,8 @@ export function LobbyPanel({
   mode,
   records,
   mastery,
-  showMastery,
   onClueChange,
   onModeChange,
-  onToggleMastery,
   onPlay,
   onInsetChange,
   daily,
@@ -239,21 +235,17 @@ export function LobbyPanel({
         {playButton}
       </div>
 
+      {/* The map behind the panel is always the mastery map of the game picked; this is its key. */}
       <div className={styles.mastery}>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={showMastery}
-          className={styles.masteryToggle}
-          onClick={onToggleMastery}
-        >
-          <span className={styles.switch} aria-hidden="true" />
-          <span>{t.masteryToggle}</span>
+        <p className={styles.masteryHead}>
+          <span>{t.masteryTitle}</span>
           <span className={`${ui.mono} ${styles.masteryCount}`}>
             {t.masteryCount(masteredCount(mastery), MODE_TOTALS[GLOBAL_MODE])}
           </span>
-        </button>
-        {showMastery && (
+        </p>
+        {Object.keys(mastery).length === 0 ? (
+          <p className={styles.masteryEmpty}>{t.masteryEmpty}</p>
+        ) : (
           <ul className={styles.legend}>
             {t.masteryLevels.map((label, level) => (
               <li key={label}>

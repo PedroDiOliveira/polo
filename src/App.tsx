@@ -7,7 +7,7 @@ import { Header } from './components/Header'
 import { LobbyPanel } from './components/LobbyPanel'
 import { RecordsDialog } from './components/RecordsDialog'
 import { ResultPanel } from './components/ResultPanel'
-import { describePlace, getCountry } from './data/world'
+import { describePlace, getCountry, regionFeatures } from './data/world'
 import { CONTINENT_BOUNDS } from './game/camera'
 import type { Country } from './data/types'
 import { dailyClue, dayNumber, streakOf } from './game/daily'
@@ -64,7 +64,6 @@ export function App() {
   const [mode, setMode] = useState<ModeId>(() => linkedChoice().mode)
   const [focus, setFocus] = useState<MapFocus>({ id: 0, bounds: null })
   const [recordsOpen, setRecordsOpen] = useState(false)
-  const [showMastery, setShowMastery] = useState(false)
   const [lobbyInset, setLobbyInset] = useState<MapInset>(NO_INSET)
 
   // Drop the friend's score from the address bar, so a reload or a bookmark does not offer the challenge again.
@@ -89,15 +88,20 @@ export function App() {
     [allWrong, feedback],
   )
 
+  // A regional round switches off the rest of the world, so a beginner sees exactly which countries are in play.
+  const roundMode = session.phase === 'lobby' ? null : session.mode
+  const region = useMemo(() => (roundMode && !isWorldwide(roundMode) ? regionFeatures(roundMode) : null), [roundMode])
+
   const fills = useMemo<MapFill[]>(() => {
-    if (session.phase === 'lobby' && showMastery) {
+    // The lobby always shows what the player knows, for the game picked: the map is their progress.
+    if (session.phase === 'lobby') {
       return groupByLevel(mastery[clue]).map((codes, level) => ({ color: MAP_COLORS.mastery[level], codes }))
     }
     return [
       { color: MAP_COLORS.correct, codes: correct },
       { color: MAP_COLORS.wrong, codes: wrong },
     ]
-  }, [session.phase, showMastery, mastery, clue, correct, wrong])
+  }, [session.phase, mastery, clue, correct, wrong])
 
   const signal = useMemo<MapSignal | null>(() => {
     const target = feedback && getCountry(feedback.target)
@@ -192,6 +196,7 @@ export function App() {
           locale={locale}
           showCapitals={!playing}
           fills={fills}
+          region={region}
           hatched={wrong}
           signal={signal}
           focus={focus}
@@ -236,10 +241,8 @@ export function App() {
           mode={mode}
           records={records}
           mastery={mastery[clue]}
-          showMastery={showMastery}
           onClueChange={setClue}
           onModeChange={setMode}
-          onToggleMastery={() => setShowMastery((current) => !current)}
           onPlay={() => play(clue, mode)}
           onInsetChange={setLobbyInset}
         />

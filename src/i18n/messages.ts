@@ -69,7 +69,8 @@ export interface Messages {
   reviewEnded: string
   missedTitle: string
   showOnMap: (country: string) => string
-  masteryToggle: string
+  masteryTitle: string
+  masteryEmpty: string
   masteryLevels: readonly [string, string, string, string]
   masteryCount: (count: number, total: number) => string
   offerTitle: string
@@ -219,7 +220,8 @@ const en: Messages = {
   reviewEnded: 'Review ended',
   missedTitle: 'Missed',
   showOnMap: (country) => `Show ${country} on the map`,
-  masteryToggle: 'Mastery map',
+  masteryTitle: 'Mastery map',
+  masteryEmpty: 'Play to colour the map with what you know.',
   masteryLevels: ['Learning', 'Familiar', 'Good', 'Mastered'],
   masteryCount: (count, total) => `${count} of ${total} mastered`,
   offerTitle: 'Missed. Keep your perfect run?',
@@ -385,7 +387,8 @@ const pt: Messages = {
   reviewEnded: 'Revisão encerrada',
   missedTitle: 'Erros',
   showOnMap: (country) => `Mostrar ${country} no mapa`,
-  masteryToggle: 'Mapa de domínio',
+  masteryTitle: 'Mapa de domínio',
+  masteryEmpty: 'Jogue para pintar o mapa com o que você sabe.',
   masteryLevels: ['Aprendendo', 'Familiar', 'Bom', 'Dominado'],
   masteryCount: (count, total) => `${count} de ${total} dominados`,
   offerTitle: 'Errou. Quer manter o gabarito?',
